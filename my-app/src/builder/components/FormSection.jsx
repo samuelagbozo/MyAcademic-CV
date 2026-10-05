@@ -6,10 +6,11 @@ import ExperienceForm from './forms/ExperienceForm.jsx'
 import EducationForm from './forms/EducationForm.jsx'
 import ProjectForm from './forms/ProjectForm.jsx'
 import SkillsForm from './forms/SkillsForm.jsx'
+import AchievementsForm from './forms/AchievementsForm.jsx'
 import ReferencesForm from './forms/ReferencesForm.jsx'
 import ThemeColor from './ThemeColor.jsx'
 
-const STEPS = ['Personal Information', 'Professional Summary', 'Professional Experience', 'Education', 'Projects', 'Skills', 'References']
+const STEPS = ['Personal Information', 'Professional Summary', 'Education', 'Professional Experience', 'Projects', 'Skills', 'Achievements', 'References']
 
 function FormSection({ resume, onChange, onSave }) {
   const formRef = useRef(null)
@@ -28,6 +29,10 @@ function FormSection({ resume, onChange, onSave }) {
     })
   }
 
+  function updateSummary(value) {
+    onChange((current) => ({ ...current, summary: value }))
+  }
+
   function updateEntry(section, index, field, value) {
     onChange((current) => ({ ...current, [section]: current[section].map((entry, i) => i === index ? { ...entry, [field]: value } : entry) }))
   }
@@ -35,8 +40,9 @@ function FormSection({ resume, onChange, onSave }) {
   function addEntry(section) {
     const blank = {
       experience: { title: '', companyName: '', city: '', state: '', startDate: '', endDate: '', workSummery: '' },
-      education: { universityName: '', degree: '', major: '', startDate: '', endDate: '', description: '' },
+      education: { institution: '', degree: '', major: '', startDate: '', endDate: '', description: '' },
       projects: { name: '', link: '', details: '' },
+      achievements: { title: '', organization: '', date: '', description: '' },
       references: { name: '', organization: '', email: '', telephone: '' },
     }
     onChange((current) => ({ ...current, [section]: [...current[section], blank[section]] }))
@@ -100,12 +106,13 @@ function FormSection({ resume, onChange, onSave }) {
         </div>
         <div className="min-h-[370px] pt-2">
           {step === 0 && <PersonalDetail resume={resume} onChange={updateField} onPhoto={uploadPhoto} themeColor={resume.themeColor} />}
-          {step === 1 && <SummaryForm value={resume.summary} onChange={updateField} themeColor={resume.themeColor} />}
-          {step === 2 && <ExperienceForm entries={resume.experience} themeColor={resume.themeColor} onAdd={() => addEntry('experience')} onRemove={(index) => removeEntry('experience', index)} onChange={(index, field, value) => updateEntry('experience', index, field, value)} />}
-          {step === 3 && <EducationForm entries={resume.education} themeColor={resume.themeColor} onAdd={() => addEntry('education')} onRemove={(index) => removeEntry('education', index)} onChange={(index, field, value) => updateEntry('education', index, field, value)} />}
+          {step === 1 && <SummaryForm value={resume.summary} onChange={updateSummary} themeColor={resume.themeColor} />}
+          {step === 2 && <EducationForm entries={resume.education} themeColor={resume.themeColor} onAdd={() => addEntry('education')} onRemove={(index) => removeEntry('education', index)} onChange={(index, field, value) => updateEntry('education', index, field, value)} />}
+          {step === 3 && <ExperienceForm entries={resume.experience} themeColor={resume.themeColor} onAdd={() => addEntry('experience')} onRemove={(index) => removeEntry('experience', index)} onChange={(index, field, value) => updateEntry('experience', index, field, value)} />}
           {step === 4 && <ProjectForm entries={resume.projects} themeColor={resume.themeColor} onAdd={() => addEntry('projects')} onRemove={(index) => removeEntry('projects', index)} onChange={(index, field, value) => updateEntry('projects', index, field, value)} />}
           {step === 5 && <SkillsForm skills={resume.skills} value={skillInput} onValueChange={setSkillInput} onSkillChange={updateSkill} onAdd={addSkill} onRemove={removeSkill} themeColor={resume.themeColor} />}
-          {step === 6 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
+          {step === 6 && <AchievementsForm entries={resume.achievements} themeColor={resume.themeColor} onAdd={() => addEntry('achievements')} onRemove={(index) => removeEntry('achievements', index)} onChange={(index, field, value) => updateEntry('achievements', index, field, value)} />}
+          {step === 7 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
         </div>
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
           <button type="button" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:invisible">Previous</button>

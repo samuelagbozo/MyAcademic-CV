@@ -1,16 +1,17 @@
-# React + Vite
+# AI Resume Builder
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Gemini summary generation
 
-Currently, two official plugins are available:
+1. Copy `.env.example` to `.env.local`.
+2. Set `GEMINI_API_KEY` in `.env.local` to your Google Gemini API key. Keep it server-side: do not prefix it with `VITE_` or commit `.env.local`.
+3. Run `npm run dev`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+In the builder's Summary step, enter a draft to polish or provide a prompt to generate a summary. Generated text replaces the current summary and appears in the preview. Summary text is sent to Gemini for processing.
 
-## React Compiler
+The API uses `GEMINI_MODEL` when set and defaults to `gemini-3.8-flash`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `npm run dev` starts the Vite development server and its local Gemini API endpoint.
+- `npm run build` creates a static production build.
+- `npm run preview` previews the build and includes the local Gemini API endpoint.
