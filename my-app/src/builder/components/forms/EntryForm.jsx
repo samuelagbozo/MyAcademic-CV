@@ -13,7 +13,11 @@ function EntryForm({ title, description, addLabel, emptyIcon: EmptyIcon, emptyTi
       <div className="mt-5 space-y-4">
         {entries.map((entry, index) => <div key={index} className="space-y-3 rounded-lg border border-slate-200 p-4">
           <div className="flex justify-end"><button type="button" onClick={() => onRemove(index)} aria-label={`Remove ${title.toLowerCase()} entry`} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div>
-          {fields.map(([field, label, placeholder, inputType = 'text']) => <label key={field} className="grid gap-1.5 text-xs text-slate-700">{label}{['details', 'description', 'workSummery'].includes(field) ? <textarea rows={3} value={entry[field] || ''} onChange={(event) => onChange(index, field, event.target.value)} placeholder={placeholder} className={inputClass} /> : <input type={inputType === 'text' && field.toLowerCase().includes('date') ? 'date' : inputType} value={entry[field] || ''} onChange={(event) => onChange(index, field, event.target.value)} placeholder={placeholder} className={inputClass} />}</label>)}
+          {fields.map(([field, label, placeholder, inputType = 'text']) => {
+            const dateValue = entry[field] || ''
+            const useDateInput = inputType === 'text' && field.toLowerCase().includes('date') && (!dateValue || /^\d{4}-\d{2}-\d{2}$/.test(dateValue))
+            return <label key={field} className="grid gap-1.5 text-xs text-slate-700">{label}{['details', 'description', 'workSummery'].includes(field) ? <textarea rows={3} value={dateValue} onChange={(event) => onChange(index, field, event.target.value)} placeholder={placeholder} className={inputClass} /> : <input type={useDateInput ? 'date' : inputType} value={dateValue} onChange={(event) => onChange(index, field, event.target.value)} placeholder={placeholder} className={inputClass} />}</label>
+          })}
         </div>)}
       </div>
     </section>

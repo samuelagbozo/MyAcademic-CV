@@ -11,12 +11,12 @@ function PersonalDetail({ resume, onChange, onPhoto, themeColor }) {
         <input type="file" accept="image/*" className="sr-only" onChange={onPhoto} />
       </label>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <Field label="First Name" required name="firstName" value={resume.firstName} onChange={onChange} />
-        <Field label="Last Name" required name="lastName" value={resume.lastName} onChange={onChange} />
-        <Field className="col-span-2" label="Job Title" required name="jobTitle" value={resume.jobTitle || resume.profession} onChange={onChange} />
-        <Field className="col-span-2" label="Address" required name="address" value={resume.address || resume.location} onChange={onChange} />
-        <Field label="Phone" required name="phone" value={resume.phone} onChange={onChange} />
-        <Field label="Email" required type="email" name="email" value={resume.email} onChange={onChange} />
+        <Field label="First Name" name="firstName" value={resume.firstName} onChange={onChange} />
+        <Field label="Last Name" name="lastName" value={resume.lastName} onChange={onChange} />
+        <Field className="col-span-2" label="Job Title" name="jobTitle" value={resume.jobTitle || resume.profession} onChange={onChange} />
+        <Field className="col-span-2" label="Address" name="address" value={resume.address || resume.location} onChange={onChange} />
+        <Field label="Phone" name="phone" value={resume.phone} onChange={onChange} />
+        <Field label="Email" type="email" name="email" value={resume.email} onChange={onChange} />
         <Field className="col-span-2" label="LinkedIn Profile Link" name="linkedin" value={resume.linkedin} onChange={onChange} />
         <Field className="col-span-2" label="Personal Website Link (Optional)" name="website" value={resume.website} onChange={onChange} />
       </div>

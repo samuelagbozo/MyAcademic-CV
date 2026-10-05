@@ -14,7 +14,9 @@ function Home() {
   })
   const navigate = useNavigate()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
-  const [uploadedFileName, setUploadedFileName] = useState('')
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   function addResume(resume) {
     setResumes((current) => {
@@ -31,6 +33,60 @@ function Home() {
       localStorage.setItem('resume-builder-resumes', JSON.stringify(updated))
       return updated
     })
+  }
+
+  function selectResumeFile(event) {
+    setUploadedFile(event.target.files?.[0] || null)
+    setUploadError('')
+  }
+
+  async function importResume() {
+    if (!uploadedFile) return
+    if (uploadedFile.size > 8 * 1024 * 1024) {
+      setUploadError('Choose a resume file smaller than 8 MB.')
+      return
+    }
+
+    setIsImporting(true)
+    setUploadError('')
+    try {
+      const fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = reader.result
+          if (typeof result !== 'string' || !result.includes(',')) {
+            reject(new Error('Could not read the selected file.'))
+            return
+          }
+          resolve(result.slice(result.indexOf(',') + 1))
+        }
+        reader.onerror = () => reject(new Error('Could not read the selected file.'))
+        reader.readAsDataURL(uploadedFile)
+      })
+      const response = await fetch('/api/extract-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64: fileData, name: uploadedFile.name, mimeType: uploadedFile.type }),
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.error || 'Could not extract this resume.')
+      if (!result?.resume || typeof result.resume !== 'object') throw new Error('AI did not return resume details.')
+
+      const title = uploadedFile.name.replace(/\.[^.]+$/, '').trim() || 'Imported Resume'
+      addResume({
+        ...result.resume,
+        id: crypto.randomUUID(),
+        title,
+        fullName: result.resume.fullName || [result.resume.firstName, result.resume.lastName].filter(Boolean).join(' '),
+        profession: result.resume.jobTitle || '',
+        themeColor: '#111827',
+        photo: '',
+      })
+    } catch (error) {
+      setUploadError(error.message || 'Could not import this resume. Please try again.')
+    } finally {
+      setIsImporting(false)
+    }
   }
 
   return (
@@ -115,22 +171,23 @@ function Home() {
         >
           <section role="dialog" aria-modal="true" aria-labelledby="upload-resume-heading" className="w-full max-w-lg rounded-xl border bg-background p-6 text-foreground shadow-xl">
             <h2 id="upload-resume-heading" className="text-xl font-semibold">Upload your resume</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Select a resume file from your computer. AI processing will be added later.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Gemini will extract available details and prefill a new resume. Your file is sent to Google Gemini for processing.</p>
             <label htmlFor="resume-file" className="mt-5 flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:bg-muted/60">
               <FileUp className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <span className="text-sm font-medium">{uploadedFileName || 'Choose a file to upload'}</span>
-              <span className="text-xs text-muted-foreground">PDF, DOC, or DOCX</span>
+              <span className="text-sm font-medium">{uploadedFile?.name || 'Choose a file to upload'}</span>
+              <span className="text-xs text-muted-foreground">PDF, DOC, or DOCX (up to 8 MB)</span>
             </label>
             <input
               id="resume-file"
               type="file"
               accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="sr-only"
-              onChange={(event) => setUploadedFileName(event.target.files?.[0]?.name || '')}
+              onChange={selectResumeFile}
             />
+            {uploadError && <p role="alert" className="mt-3 text-sm text-red-600">{uploadError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setIsUploadOpen(false)} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
-              <button type="button" disabled={!uploadedFileName} onClick={() => setIsUploadOpen(false)} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">Select file</button>
+              <button type="button" disabled={isImporting} onClick={() => { setIsUploadOpen(false); setUploadedFile(null); setUploadError('') }} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">Cancel</button>
+              <button type="button" disabled={!uploadedFile || isImporting} onClick={importResume} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{isImporting ? 'Analyzing resume...' : 'Analyze and import'}</button>
             </div>
           </section>
         </div>
