@@ -12,7 +12,7 @@ function EntryForm({ title, description, addLabel, emptyIcon: EmptyIcon, emptyTi
       {entries.length === 0 && EmptyIcon && <div className="flex flex-col items-center gap-1 py-10 text-center text-slate-500"><EmptyIcon className="mb-2 h-12 w-12 text-slate-300" strokeWidth={1.5} /><p>{emptyTitle}</p><p className="text-sm">{emptyHint}</p></div>}
       <div className="mt-5 space-y-4">
         {entries.map((entry, index) => <div key={index} className="space-y-3 rounded-lg border border-slate-200 p-4">
-          <div className="flex justify-end"><button type="button" onClick={() => onRemove(index)} aria-label={`Remove ${title.toLowerCase()} entry`} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div>
+          <div className="flex justify-end"><button type="button" onClick={() => onRemove(index)} aria-label={`Remove ${title.toLowerCase()} entry`} className="trash-action text-slate-400 hover:text-red-600"><Trash2 className="trash-icon h-4 w-4" aria-hidden="true" /></button></div>
           {fields.map(([field, label, placeholder, inputType = 'text']) => {
             const dateValue = entry[field] || ''
             const useDateInput = inputType === 'text' && field.toLowerCase().includes('date') && (!dateValue || /^\d{4}-\d{2}-\d{2}$/.test(dateValue))

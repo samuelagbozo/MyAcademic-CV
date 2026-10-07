@@ -1,28 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/react-router'
 import { ArrowLeft, Download, Share2 } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import FormSection from './components/FormSection.jsx'
 import ResumePreview from './components/ResumePreview.jsx'
-
-const STORAGE_KEY = 'resume-builder-resumes'
+import { apiRequest } from '../lib/api.js'
+import { sanitizeRichText } from './richText.js'
 
 function createEmptyResume(id, title) {
   return {
     id,
     title: title || 'My Resume',
-    firstName: '', lastName: '', fullName: '', email: '', phone: '', address: '', location: '', profession: '', jobTitle: '', linkedin: '', website: '',
-    summary: '', photo: '', experience: [], education: [], projects: [], skills: [], achievements: [], references: [],
+    firstName: '', middleName: '', lastName: '', fullName: '', email: '', phone: '', address: '', location: '', profession: '', jobTitle: '', linkedin: '', website: '',
+    summary: '', photo: '', experience: [], leadershipExperience: [], education: [], projects: [], skills: [], certifications: [], achievements: [], customSections: [], references: [],
     themeColor: '#111827',
   }
 }
 
-function loadResume(id, title) {
-  try {
-    const resumes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    const saved = resumes.find((resume) => resume.id === id)
-    if (!saved) return createEmptyResume(id, title)
+function normalizeResume(saved, id, title) {
+  if (!saved) return createEmptyResume(id, title)
 
-    return {
+  return {
       ...createEmptyResume(id, title),
       ...saved,
       firstName: saved.firstName || (saved.fullName || '').trim().split(/\s+/)[0] || '',
@@ -45,6 +43,16 @@ function loadResume(id, title) {
         : saved.experience
           ? [{ title: saved.jobTitle || '', companyName: saved.company || '', city: '', state: '', startDate: '', endDate: '', workSummery: saved.experience }]
           : [],
+      leadershipExperience: Array.isArray(saved.leadershipExperience)
+        ? saved.leadershipExperience.map((entry) => ({
+          ...entry,
+          title: entry.title || entry.role || '',
+          organization: entry.organization || entry.companyName || '',
+          startDate: entry.startDate || '',
+          endDate: entry.endDate || '',
+          description: entry.description || entry.details || '',
+        }))
+        : [],
       education: Array.isArray(saved.education)
         ? saved.education.map((entry) => ({
           ...entry,
@@ -59,40 +67,86 @@ function loadResume(id, title) {
           ? [{ universityName: saved.school || '', degree: saved.qualification || '', major: '', startDate: '', endDate: '', description: saved.educationDetails || '' }]
           : [],
       projects: Array.isArray(saved.projects) ? saved.projects : [],
+      certifications: Array.isArray(saved.certifications) ? saved.certifications : [],
       skills: Array.isArray(saved.skills)
         ? saved.skills.map((skill) => typeof skill === 'string' ? { name: skill, rating: 0 } : skill)
         : typeof saved.skills === 'string'
           ? saved.skills.split(',').map((skill) => skill.trim()).filter(Boolean).map((name) => ({ name, rating: 0 }))
           : [],
       achievements: Array.isArray(saved.achievements) ? saved.achievements : [],
-    }
-  } catch {
-    return createEmptyResume(id, title)
+      customSections: Array.isArray(saved.customSections)
+        ? saved.customSections
+          .filter((section) => section && typeof section === 'object' && !Array.isArray(section))
+          .map((section) => ({
+            id: typeof section.id === 'string' && section.id ? section.id : crypto.randomUUID(),
+            title: typeof section.title === 'string' ? section.title : '',
+            content: sanitizeRichText(typeof section.content === 'string' ? section.content : ''),
+          }))
+        : [],
   }
 }
 
 function Builder() {
+  const { getToken } = useAuth()
   const navigate = useNavigate()
   const { state } = useLocation()
   const { id } = useParams()
-  const [resume, setResume] = useState(() => loadResume(id, state?.title))
+  const [resume, setResume] = useState(() => normalizeResume(state?.resume, id, state?.title))
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
+  const [previewStyle, setPreviewStyle] = useState('a4')
+  const [activeFormStep, setActiveFormStep] = useState(0)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadResume() {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const result = await apiRequest(`/resumes/${encodeURIComponent(id)}`, { token })
+        if (isCurrent) setResume(normalizeResume(result.resume, id, state?.title))
+      } catch (error) {
+        if (isCurrent) setSavedMessage(error.message || 'Could not load this resume.')
+      } finally {
+        if (isCurrent) setIsLoading(false)
+      }
+    }
+
+    loadResume()
+    return () => {
+      isCurrent = false
+    }
+  }, [getToken, id, state?.title])
+
+  useEffect(() => {
+    if (isLoading || !state?.printOnLoad) return undefined
+    const timer = window.setTimeout(() => window.print(), 250)
+    return () => window.clearTimeout(timer)
+  }, [isLoading, state?.printOnLoad])
 
   function updateResume(updater) {
     setResume(updater)
     setSavedMessage('')
   }
 
-  function saveResume() {
+  async function saveResume() {
+    setIsSaving(true)
+    setSavedMessage('Saving...')
     try {
-      const resumes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-      const existingIndex = resumes.findIndex((item) => item.id === id)
-      if (existingIndex === -1) resumes.push(resume)
-      else resumes[existingIndex] = resume
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(resumes))
+      const token = await getToken()
+      const result = await apiRequest(`/resumes/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        token,
+        body: JSON.stringify({ resume }),
+      })
+      setResume(normalizeResume(result.resume, id, resume.title))
       setSavedMessage('Changes saved.')
-    } catch {
-      setSavedMessage('Could not save this resume in your browser.')
+    } catch (error) {
+      setSavedMessage(error.message || 'Could not save this resume.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -127,9 +181,13 @@ function Builder() {
     window.print()
   }
 
+  if (isLoading) {
+    return <main role="status" className="min-h-screen p-8 text-slate-600">Loading your saved resume...</main>
+  }
+
   return (
-    <main className="min-h-screen bg-white px-4 py-4 text-slate-900 sm:px-8 sm:py-6 print:min-h-0 print:p-0">
-      <header className="flex min-h-16 flex-wrap items-center justify-between gap-4 rounded-xl border-2 border-slate-700 bg-white px-5 py-3 sm:px-8 print:hidden">
+    <main className="career-theme min-h-screen px-4 py-4 text-[#1B342B] sm:px-8 sm:py-6 print:min-h-0 print:p-0">
+      <header className="career-builder-header flex min-h-16 flex-wrap items-center justify-between gap-4 rounded-xl border px-5 py-3 sm:px-8 print:hidden">
         <button type="button" onClick={() => navigate('/home')} className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" /> Back to My Resumes
         </button>
@@ -146,10 +204,34 @@ function Builder() {
 
       <div className="grid grid-cols-1 items-start gap-6 p-4 sm:gap-8 sm:p-6 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10 lg:p-8 print:m-0 print:block print:p-0">
         <div className="min-w-0">
-          <FormSection resume={resume} onChange={updateResume} onSave={saveResume} />
+          <FormSection resume={resume} onChange={updateResume} onSave={saveResume} onStepChange={setActiveFormStep} isSaving={isSaving} />
         </div>
         <section aria-label="Live resume preview" className="min-w-0 w-full print:static">
-          <ResumePreview resume={resume} />
+          <div className="career-preview-switch mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 print:hidden">
+            <div>
+              <p className="text-sm font-semibold text-[#1B342B]">Preview style</p>
+              <p className="mt-0.5 text-xs text-[#647168]">Choose how your resume is displayed.</p>
+            </div>
+            <div role="group" aria-label="Resume preview style" className="inline-flex rounded-lg border border-[#2C4A3E]/15 bg-[#F2EFE6] p-1">
+              <button
+                type="button"
+                aria-pressed={previewStyle === 'current'}
+                onClick={() => setPreviewStyle('current')}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] ${previewStyle === 'current' ? 'bg-[#2C4A3E] text-white shadow-sm' : 'text-[#526158] hover:text-[#1B342B]'}`}
+              >
+                Current style
+              </button>
+              <button
+                type="button"
+                aria-pressed={previewStyle === 'a4'}
+                onClick={() => setPreviewStyle('a4')}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] ${previewStyle === 'a4' ? 'bg-[#2C4A3E] text-white shadow-sm' : 'text-[#526158] hover:text-[#1B342B]'}`}
+              >
+                A4 sheets
+              </button>
+            </div>
+          </div>
+          <ResumePreview resume={resume} previewStyle={previewStyle} activeFormStep={activeFormStep} />
         </section>
       </div>
     </main>

@@ -3,27 +3,27 @@ import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import { env } from 'node:process'
-import { createSummaryApi } from './server/generateSummary.js'
+import { createAiApi } from './server/generateSummary.js'
 
-function geminiSummaryPlugin() {
+function aiApiPlugin() {
   return {
-    name: 'gemini-summary-api',
+    name: 'ai-api',
     configResolved(config) {
       const variables = loadEnv(config.mode, config.envDir, '')
-      if (!env.GEMINI_API_KEY && variables.GEMINI_API_KEY) env.GEMINI_API_KEY = variables.GEMINI_API_KEY
-      if (!env.GEMINI_MODEL && variables.GEMINI_MODEL) env.GEMINI_MODEL = variables.GEMINI_MODEL
+      if (!env.DEEPSEEK_API_KEY && variables.DEEPSEEK_API_KEY) env.DEEPSEEK_API_KEY = variables.DEEPSEEK_API_KEY
+      if (!env.DEEPSEEK_MODEL && variables.DEEPSEEK_MODEL) env.DEEPSEEK_MODEL = variables.DEEPSEEK_MODEL
     },
     configureServer(server) {
-      server.middlewares.use(createSummaryApi())
+      server.middlewares.use(createAiApi())
     },
     configurePreviewServer(server) {
-      server.middlewares.use(createSummaryApi())
+      server.middlewares.use(createAiApi())
     },
   }
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), geminiSummaryPlugin()],
+  plugins: [react(), tailwindcss(), aiApiPlugin()],
 
   resolve: {
     alias: {

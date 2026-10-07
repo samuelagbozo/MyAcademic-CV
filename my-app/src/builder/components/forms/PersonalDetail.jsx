@@ -10,8 +10,9 @@ function PersonalDetail({ resume, onChange, onPhoto, themeColor }) {
         <span className="text-slate-700 hover:underline">{resume.photo ? 'Change user image' : 'Upload user image'}</span>
         <input type="file" accept="image/*" className="sr-only" onChange={onPhoto} />
       </label>
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Field label="First Name" name="firstName" value={resume.firstName} onChange={onChange} />
+        <Field label="Middle Name" name="middleName" value={resume.middleName} onChange={onChange} />
         <Field label="Last Name" name="lastName" value={resume.lastName} onChange={onChange} />
         <Field className="col-span-2" label="Job Title" name="jobTitle" value={resume.jobTitle || resume.profession} onChange={onChange} />
         <Field className="col-span-2" label="Address" name="address" value={resume.address || resume.location} onChange={onChange} />

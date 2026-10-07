@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PlusSquare } from 'lucide-react'
+import { SquarePlus } from 'lucide-react'
 
 const fieldClassName = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
@@ -12,11 +12,11 @@ function AddResume({ onCreate }) {
     setTitle('')
   }
 
-  function createResume(event) {
+  async function createResume(event) {
     event.preventDefault()
     if (!title.trim()) return
-    onCreate({ id: crypto.randomUUID(), title: title.trim() })
-    closeDialogs()
+    const created = await onCreate({ id: crypto.randomUUID(), title: title.trim() })
+    if (created) closeDialogs()
   }
 
   function handleCardKeyDown(event) {
@@ -34,13 +34,13 @@ function AddResume({ onCreate }) {
         aria-label="Add a resume"
         onClick={() => setDialog('title')}
         onKeyDown={handleCardKeyDown}
-        className="group flex min-h-52 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card/70 p-6 text-center transition hover:border-primary/50 hover:bg-muted/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group flex min-h-[300px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-white p-6 text-center transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-muted transition group-hover:bg-background">
-          <PlusSquare className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-100 bg-white text-indigo-600 shadow-sm transition-transform group-hover:scale-105">
+          <SquarePlus className="add-icon h-7 w-7" aria-hidden="true" />
         </div>
-        <span className="font-medium">Create a new resume</span>
-        <span className="text-sm text-muted-foreground">Click anywhere on this card to start</span>
+        <span className="font-semibold text-slate-800">Create a new resume</span>
+        <span className="max-w-60 text-sm text-slate-400">Start from scratch and build a resume that stands out.</span>
       </div>
 
       {dialog && (

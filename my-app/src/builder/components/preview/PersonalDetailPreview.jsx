@@ -1,5 +1,5 @@
 function PersonalDetailPreview({ resume }) {
-  const name = [resume.firstName, resume.lastName].filter(Boolean).join(' ') || resume.fullName || 'Your Name'
+  const name = [resume.firstName, resume.middleName, resume.lastName].filter(Boolean).join(' ') || resume.fullName || 'Your Name'
   const address = resume.address || resume.location
   const title = resume.jobTitle || resume.profession
 

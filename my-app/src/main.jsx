@@ -11,6 +11,9 @@ import Home from './Home'
 import Dashboard from './dashboard'
 import Welcome from './Welcome'
 import Builder from './builder'
+import ResumeRating from './ResumeRating.jsx'
+import ResumeHistory from './ResumeHistory.jsx'
+import AIReviewHistory from './AIReviewHistory.jsx'
 
 const router = createBrowserRouter([
   {
@@ -28,12 +31,28 @@ const router = createBrowserRouter([
             element: <Home />,
           },
           {
+            path: '/resumes',
+            element: <ResumeHistory />,
+          },
+          {
+            path: '/reviews',
+            element: <AIReviewHistory />,
+          },
+          {
             path: '/dashboard',
             element: <Dashboard />,
           },
           {
             path: '/builder/:id',
             element: <Builder />,
+          },
+          {
+            path: '/resume-rating',
+            element: <ResumeRating />,
+          },
+          {
+            path: '/resume-rating/:reviewId',
+            element: <ResumeRating />,
           },
         ],
       },

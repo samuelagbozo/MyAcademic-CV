@@ -10,7 +10,9 @@ function AppLayout() {
   const location = useLocation()
 
   if (!isLoaded) return <p className="p-6">Loading...</p>
-  if ((['/home', '/dashboard'].includes(location.pathname) || location.pathname.startsWith('/builder/')) && !isSignedIn) {
+  if ((['/home', '/dashboard', '/resumes', '/reviews', '/resume-rating'].includes(location.pathname) ||
+    location.pathname.startsWith('/resume-rating/') ||
+    location.pathname.startsWith('/builder/')) && !isSignedIn) {
     return <Navigate to="/auth/sign-in" replace />
   }
 

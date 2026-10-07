@@ -1,28 +1,37 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import PersonalDetail from './forms/PersonalDetail.jsx'
 import SummaryForm from './forms/SummaryForm.jsx'
 import ExperienceForm from './forms/ExperienceForm.jsx'
+import LeadershipExperienceForm from './forms/LeadershipExperienceForm.jsx'
 import EducationForm from './forms/EducationForm.jsx'
 import ProjectForm from './forms/ProjectForm.jsx'
 import SkillsForm from './forms/SkillsForm.jsx'
+import CertificationsForm from './forms/CertificationsForm.jsx'
 import AchievementsForm from './forms/AchievementsForm.jsx'
+import CustomSectionsForm from './forms/CustomSectionsForm.jsx'
 import ReferencesForm from './forms/ReferencesForm.jsx'
 import ThemeColor from './ThemeColor.jsx'
 
-const STEPS = ['Personal Information', 'Professional Summary', 'Education', 'Professional Experience', 'Projects', 'Skills', 'Achievements', 'References']
+const STEPS = ['Personal Information', 'Professional Summary', 'Education', 'Professional Experience', 'Projects', 'Skills', 'Certifications', 'Leadership Experience', 'Achievements', 'Custom Sections', 'References']
 
-function FormSection({ resume, onChange, onSave }) {
+function FormSection({ resume, onChange, onSave, onStepChange, isSaving = false }) {
   const formRef = useRef(null)
   const [step, setStep] = useState(0)
   const [skillInput, setSkillInput] = useState('')
   const progress = ((step + 1) / STEPS.length) * 100
 
+  useEffect(() => {
+    onStepChange?.(step)
+  }, [onStepChange, step])
+
   function updateField(event) {
     const { name, value } = event.target
     onChange((current) => {
       const updated = { ...current, [name]: value }
-      if (name === 'firstName' || name === 'lastName') updated.fullName = `${updated.firstName || ''} ${updated.lastName || ''}`.trim()
+      if (name === 'firstName' || name === 'middleName' || name === 'lastName') {
+        updated.fullName = [updated.firstName, updated.middleName, updated.lastName].filter(Boolean).join(' ')
+      }
       if (name === 'jobTitle') updated.profession = value
       if (name === 'address') updated.location = value
       return updated
@@ -40,8 +49,10 @@ function FormSection({ resume, onChange, onSave }) {
   function addEntry(section) {
     const blank = {
       experience: { title: '', companyName: '', city: '', state: '', startDate: '', endDate: '', workSummery: '' },
+      leadershipExperience: { title: '', organization: '', startDate: '', endDate: '', description: '' },
       education: { institution: '', degree: '', major: '', startDate: '', endDate: '', description: '' },
       projects: { name: '', link: '', details: '' },
+      certifications: { name: '', issuer: '', issueDate: '', expiryDate: '', credentialId: '', credentialUrl: '' },
       achievements: { title: '', organization: '', date: '', description: '' },
       references: { name: '', organization: '', email: '', telephone: '' },
     }
@@ -111,12 +122,15 @@ function FormSection({ resume, onChange, onSave }) {
           {step === 3 && <ExperienceForm entries={resume.experience} themeColor={resume.themeColor} onAdd={() => addEntry('experience')} onRemove={(index) => removeEntry('experience', index)} onChange={(index, field, value) => updateEntry('experience', index, field, value)} />}
           {step === 4 && <ProjectForm entries={resume.projects} themeColor={resume.themeColor} onAdd={() => addEntry('projects')} onRemove={(index) => removeEntry('projects', index)} onChange={(index, field, value) => updateEntry('projects', index, field, value)} />}
           {step === 5 && <SkillsForm skills={resume.skills} value={skillInput} onValueChange={setSkillInput} onSkillChange={updateSkill} onAdd={addSkill} onRemove={removeSkill} themeColor={resume.themeColor} />}
-          {step === 6 && <AchievementsForm entries={resume.achievements} themeColor={resume.themeColor} onAdd={() => addEntry('achievements')} onRemove={(index) => removeEntry('achievements', index)} onChange={(index, field, value) => updateEntry('achievements', index, field, value)} />}
-          {step === 7 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
+          {step === 6 && <CertificationsForm entries={resume.certifications} themeColor={resume.themeColor} onAdd={() => addEntry('certifications')} onRemove={(index) => removeEntry('certifications', index)} onChange={(index, field, value) => updateEntry('certifications', index, field, value)} />}
+          {step === 7 && <LeadershipExperienceForm entries={resume.leadershipExperience} themeColor={resume.themeColor} onAdd={() => addEntry('leadershipExperience')} onRemove={(index) => removeEntry('leadershipExperience', index)} onChange={(index, field, value) => updateEntry('leadershipExperience', index, field, value)} />}
+          {step === 8 && <AchievementsForm entries={resume.achievements} themeColor={resume.themeColor} onAdd={() => addEntry('achievements')} onRemove={(index) => removeEntry('achievements', index)} onChange={(index, field, value) => updateEntry('achievements', index, field, value)} />}
+          {step === 9 && <CustomSectionsForm sections={resume.customSections} onChange={(customSections) => onChange((current) => ({ ...current, customSections }))} />}
+          {step === 10 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
         </div>
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
           <button type="button" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:invisible">Previous</button>
-          <button type="submit" className="rounded-lg border border-emerald-300 bg-emerald-100 px-6 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200">Save Changes</button>
+          <button type="submit" disabled={isSaving} className="rounded-lg border border-emerald-300 bg-emerald-100 px-6 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60">{isSaving ? 'Saving...' : 'Save Changes'}</button>
           <button type="button" onClick={goNext} disabled={step === STEPS.length - 1} className="rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:invisible">Next</button>
         </div>
       </div>
