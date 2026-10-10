@@ -11,6 +11,18 @@ import { apiRequest } from '../lib/api.js'
 
 const MAX_RESUME_UPLOAD_SIZE = 10 * 1024 * 1024
 
+async function requestWithRetry(path, options, attempts = 2) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await apiRequest(path, options)
+    } catch (error) {
+      const retryable = !options.signal?.aborted && (error instanceof TypeError || error.cause instanceof TypeError || [502, 503, 504].includes(error.status))
+      if (!retryable || attempt === attempts - 1) throw error
+      await new Promise((resolve) => window.setTimeout(resolve, 800 * (attempt + 1)))
+    }
+  }
+}
+
 function Home() {
   const { getToken, isLoaded: isAuthLoaded, isSignedIn } = useAuth()
   const [resumes, setResumes] = useState([])
@@ -25,8 +37,10 @@ function Home() {
   const [isUploadDragOver, setIsUploadDragOver] = useState(false)
   const [ratingFile, setRatingFile] = useState(null)
   const [isRating, setIsRating] = useState(false)
+  const [isWakingRatingServer, setIsWakingRatingServer] = useState(false)
   const [ratingError, setRatingError] = useState('')
   const [pendingReview, setPendingReview] = useState(null)
+  const ratingLockRef = useRef(false)
   const [isCreatingResume, setIsCreatingResume] = useState(false)
   const [isWakingServer, setIsWakingServer] = useState(false)
   const [createError, setCreateError] = useState('')
@@ -238,20 +252,24 @@ function Home() {
 
   function selectRatingFile(event) {
     const file = event.target.files?.[0] || null
+    event.target.value = ''
     if (!file) {
       setRatingFile(null)
+      setRatingError('')
       return
     }
-    if (!/\.(pdf|docx)$/i.test(file.name)) {
+    const extension = file.name.toLowerCase().match(/\.(pdf|docx)$/)?.[1]
+    const allowedMimeTypes = extension === 'pdf'
+      ? ['', 'application/pdf', 'application/octet-stream']
+      : ['', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream']
+    if (!extension || !allowedMimeTypes.includes(file.type)) {
       setRatingFile(null)
-      setRatingError('Choose a PDF or DOCX file.')
-      event.target.value = ''
+      setRatingError('This file type is not supported. Choose a PDF or DOCX file.')
       return
     }
     if (file.size > MAX_RESUME_UPLOAD_SIZE) {
       setRatingFile(null)
       setRatingError('Choose a resume file smaller than 10 MB.')
-      event.target.value = ''
       return
     }
     setRatingFile(file)
@@ -259,6 +277,7 @@ function Home() {
   }
 
   async function rateUploadedResume() {
+    if (ratingLockRef.current || isRating) return
     if (pendingReview) {
       await retrySaveReview()
       return
@@ -268,46 +287,77 @@ function Home() {
       setRatingError('Choose a PDF or DOCX resume to analyze.')
       return
     }
+    if (!isAuthLoaded || !isSignedIn) {
+      navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
+      return
+    }
+
+    ratingLockRef.current = true
     setIsRating(true)
     setRatingError('')
+    setIsWakingRatingServer(false)
+    const controller = new AbortController()
+    const wakeTimer = window.setTimeout(() => setIsWakingRatingServer(true), 5000)
+    const timeout = window.setTimeout(() => controller.abort(), 120000)
     let generatedReview = null
     try {
-      const fileData = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const result = reader.result
-          if (typeof result !== 'string' || !result.includes(',')) {
-            reject(new Error('Could not read the selected file.'))
-            return
-          }
-          resolve(result.slice(result.indexOf(',') + 1))
-        }
-        reader.onerror = () => reject(new Error('Could not read the selected file.'))
-        reader.readAsDataURL(ratingFile)
-      })
-      const result = await apiRequest('/rate-resume', {
-        method: 'POST',
-        body: JSON.stringify({ fileBase64: fileData, name: ratingFile.name, mimeType: ratingFile.type }),
+      const token = await getToken()
+      if (!token) {
+        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
+        return
+      }
+      const formData = new FormData()
+      formData.append('resume', ratingFile, ratingFile.name)
+      const result = await requestWithRetry('/rate-resume', {
+        method: 'POST', token, signal: controller.signal, body: formData,
       })
       if (!result?.rating || typeof result.rating !== 'object') throw new Error('The AI did not return a valid rating. Please retry.')
       const review = { id: crypto.randomUUID(), fileName: ratingFile.name, rating: result.rating }
       generatedReview = review
       setPendingReview(review)
-      await saveReviewAndOpen(review, ratingFile)
+      await saveReviewAndOpen(review, ratingFile, token, controller.signal)
     } catch (error) {
-      setRatingError(generatedReview || pendingReview
-        ? `Your review is ready, but it could not be saved: ${error.message || 'Please retry saving.'}`
-        : error.message || 'Could not analyze this resume. Please retry.')
+      if (import.meta.env.DEV) console.error('CV review request failed:', error)
+      if (error.status === 401) {
+        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
+      } else if (controller.signal.aborted || error.name === 'AbortError' || error.name === 'TimeoutError') {
+        setRatingError(generatedReview ? 'Your review is ready, but saving it timed out. Try again to save it.' : 'The review took too long. Please try again.')
+      } else if (error.status === 413) {
+        setRatingError('Choose a resume file smaller than 10 MB.')
+      } else if (error.status === 415) {
+        setRatingError('This file type is not supported. Choose a PDF or DOCX file.')
+      } else if (error.status === 422) {
+        setRatingError('This looks like a scanned file. Please upload a text-based PDF or DOCX.')
+      } else if (generatedReview || pendingReview) {
+        setRatingError(`Your review is ready, but it could not be saved: ${error.message || 'Please try again.'}`)
+      } else if (error.cause instanceof TypeError || error instanceof TypeError) {
+        setRatingError('Could not reach the review server. Check your connection and try again.')
+      } else if (error.status === 429) {
+        setRatingError('The AI service is busy. Please wait a moment and try again.')
+      } else if (error.status >= 500) {
+        setRatingError(error.message || 'The AI review service is temporarily unavailable. Please try again.')
+      } else {
+        setRatingError(error.message || 'Could not analyze this resume. Please try again.')
+      }
     } finally {
+      window.clearTimeout(wakeTimer)
+      window.clearTimeout(timeout)
+      setIsWakingRatingServer(false)
       setIsRating(false)
+      ratingLockRef.current = false
     }
   }
 
-  async function saveReviewAndOpen(review, file) {
-    const token = await getToken()
-    await apiRequest('/reviews', {
+  async function saveReviewAndOpen(review, file, existingToken, signal) {
+    const token = existingToken || await getToken()
+    if (!token) {
+      navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
+      throw Object.assign(new Error('Your session expired. Sign in again to save this review.'), { status: 401 })
+    }
+    await requestWithRetry('/reviews', {
       method: 'POST',
       token,
+      signal,
       body: JSON.stringify({ review }),
     })
     setPendingReview(null)
@@ -317,15 +367,28 @@ function Home() {
   }
 
   async function retrySaveReview() {
-    if (!pendingReview) return
+    if (!pendingReview || ratingLockRef.current) return
+    ratingLockRef.current = true
     setIsRating(true)
     setRatingError('')
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 120000)
     try {
-      await saveReviewAndOpen(pendingReview, ratingFile)
+      const token = await getToken()
+      await saveReviewAndOpen(pendingReview, ratingFile, token, controller.signal)
     } catch (error) {
-      setRatingError(`Your review is ready, but it could not be saved: ${error.message || 'Please retry saving.'}`)
+      if (import.meta.env.DEV) console.error('Could not save CV review:', error)
+      if (error.status === 401) {
+        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
+      } else if (controller.signal.aborted || error.name === 'AbortError' || error.name === 'TimeoutError') {
+        setRatingError('Your review is ready, but saving it timed out. Try again to save it.')
+      } else {
+        setRatingError(`Your review is ready, but it could not be saved: ${error.message || 'Please try again.'}`)
+      }
     } finally {
+      window.clearTimeout(timeout)
       setIsRating(false)
+      ratingLockRef.current = false
     }
   }
 
@@ -410,15 +473,17 @@ function Home() {
                 Get a detailed academic CV review against the Academic CV Master Guide, with a score and practical next steps.
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <label htmlFor="rating-resume-file" className={`inline-flex min-h-11 max-w-full min-w-0 items-center gap-2 rounded-lg border-2 border-[#1B342B]/50 bg-[#FFFEFA] px-3 py-2.5 text-sm font-medium text-[#526158] shadow-[3px_3px_0_rgba(44,74,62,0.14)] transition-colors focus-within:ring-2 focus-within:ring-[#83AE40] sm:px-4 ${pendingReview ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[#EDF2E6]'}`}>
+                <input id="rating-resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="peer sr-only" onChange={selectRatingFile} disabled={isRating || Boolean(pendingReview)} />
+                <label htmlFor="rating-resume-file" className={`inline-flex min-h-11 max-w-full min-w-0 items-center gap-2 rounded-lg border-2 border-[#1B342B]/50 bg-[#FFFEFA] px-3 py-2.5 text-sm font-medium text-[#526158] shadow-[3px_3px_0_rgba(44,74,62,0.14)] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[#83AE40] peer-focus-visible:ring-offset-2 sm:px-4 ${pendingReview ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[#EDF2E6]'}`}>
                   <FileUp className="h-4 w-4 text-[#567B42]" aria-hidden="true" />
                   <span className="min-w-0 break-all">{ratingFile?.name || 'Choose PDF or DOCX'}</span>
                 </label>
-                <input id="rating-resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="sr-only" onChange={selectRatingFile} disabled={isRating || Boolean(pendingReview)} />
+                {ratingFile && !pendingReview && <button type="button" onClick={() => { setRatingFile(null); setRatingError('') }} disabled={isRating} className="text-xs font-medium text-[#526158] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] disabled:opacity-50">Remove file</button>}
                 <span className="text-xs text-[#71806F]">Text-based files up to 10 MB</span>
               </div>
               {ratingError && <p role="alert" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
-              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your resume against the guide. This may take a moment...</p>}
+              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Reviewing your CV...</p>}
+              {isWakingRatingServer && <p role="status" aria-live="polite" className="mt-2 text-sm text-[#647168]">Waking up the server, this can take a moment on the first try.</p>}
             </div>
 
             <div className="rounded-xl border-2 border-[#1B342B] bg-[#F2EFE6] p-5 shadow-[5px_5px_0_#2C4A3E]">
@@ -430,13 +495,13 @@ function Home() {
                 <img src="/academic-cv-logo.png" alt="My Academic CV" className="brand-wordmark h-10 w-40 object-contain object-left" />
               </div>
               <p className="mt-1 text-sm text-[#647168]">Score, strengths, and prioritized improvements. Completed reviews are saved to your history.</p>
-              <button type="button" onClick={rateUploadedResume} disabled={!ratingFile || isRating} className="career-raised-button mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={rateUploadedResume} disabled={isRating} className="career-raised-button mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50">
                 {isRating && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
-                {isRating ? pendingReview ? 'Saving your review...' : 'Analyzing your resume...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
+                {isRating ? pendingReview ? 'Saving your review...' : 'Reviewing your CV...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
               </button>
-              {ratingError && ratingFile && (
-                <button type="button" disabled={isRating} onClick={pendingReview ? retrySaveReview : rateUploadedResume} className="mt-3 w-full text-sm font-medium text-[#42633A] underline underline-offset-4 disabled:opacity-50">
-                  {pendingReview ? 'Retry saving review' : 'Retry analysis'}
+              {ratingError && (
+                <button type="button" disabled={isRating} onClick={pendingReview ? retrySaveReview : rateUploadedResume} className="mt-3 w-full rounded-md text-sm font-medium text-[#42633A] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] disabled:opacity-50">
+                  {pendingReview ? 'Try again to save' : 'Try again'}
                 </button>
               )}
             </div>

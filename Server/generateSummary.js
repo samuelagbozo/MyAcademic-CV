@@ -26,13 +26,14 @@ const RATING_CATEGORIES = [
 ]
 let resumeGuideTextPromise
 
-async function createChatCompletion(messages) {
+async function createChatCompletion(messages, signal) {
   const response = await fetch(TOKENHARBOR_CHAT_COMPLETIONS_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
       'Content-Type': 'application/json',
     },
+    signal,
     body: JSON.stringify({
       model: env.DEEPSEEK_MODEL || DEFAULT_DEEPSEEK_MODEL,
       messages,
@@ -127,9 +128,11 @@ async function readResumeGuide() {
   return resumeGuideTextPromise
 }
 
-async function extractUploadedText(body) {
-  const { fileBase64, name, mimeType } = body
-  if (typeof fileBase64 !== 'string' || typeof name !== 'string' || typeof mimeType !== 'string') {
+async function extractUploadedText(file) {
+  const name = file?.originalname
+  const mimeType = file?.mimetype
+  const fileBuffer = file?.buffer
+  if (!Buffer.isBuffer(fileBuffer) || typeof name !== 'string' || typeof mimeType !== 'string') {
     const error = new Error('Choose a PDF or DOCX resume to upload.')
     error.statusCode = 400
     throw error
@@ -140,7 +143,6 @@ async function extractUploadedText(body) {
     error.statusCode = 415
     throw error
   }
-  const fileBuffer = Buffer.from(fileBase64, 'base64')
   if (!fileBuffer.length || fileBuffer.length > MAX_RESUME_FILE_BYTES) {
     const error = new Error('Choose a resume file smaller than 10 MB.')
     error.statusCode = fileBuffer.length ? 413 : 400
@@ -148,7 +150,7 @@ async function extractUploadedText(body) {
   }
   const isPdf = fileBuffer.subarray(0, 5).toString() === '%PDF-'
   const isZip = fileBuffer.subarray(0, 2).toString('hex') === '504b'
-  if ((extension === 'pdf' && (!isPdf || mimeType !== 'application/pdf')) || (extension === 'docx' && (!isZip || (mimeType && mimeType !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && mimeType !== 'application/zip')))) {
+  if ((extension === 'pdf' && (!isPdf || (mimeType && mimeType !== 'application/pdf' && mimeType !== 'application/octet-stream'))) || (extension === 'docx' && (!isZip || (mimeType && mimeType !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && mimeType !== 'application/zip' && mimeType !== 'application/octet-stream')))) {
     const error = new Error('The selected file contents do not match its file type.')
     error.statusCode = 400
     throw error
@@ -233,7 +235,7 @@ function validateRating(value) {
   }
 }
 
-async function rateResume(resumeText) {
+async function rateResume(resumeText, signal) {
   const guide = await readResumeGuide()
   const input = `ACADEMIC CV GUIDE:\n<guide>\n${guide}\n</guide>\n\nRESUME TEXT TO REVIEW:\n<resume>\n${resumeText}\n</resume>`
   let correction = ''
@@ -244,7 +246,7 @@ async function rateResume(resumeText) {
       const result = await createChatCompletion([
         { role: 'system', content: RESUME_RATING_PROMPT },
         { role: 'user', content: `${correction}${input}` },
-      ])
+      ], signal)
       return validateRating(parseModelJson(result))
     } catch (error) {
       if (error instanceof SyntaxError || /score|Rating|verdict|Overall|invalid JSON/i.test(error.message || '')) {
@@ -256,6 +258,16 @@ async function rateResume(resumeText) {
     }
   }
   throw new Error(`Could not validate the AI rating after retry: ${lastError?.message || 'invalid response'}`)
+}
+
+export async function rateUploadedResume(file, signal) {
+  if (!env.DEEPSEEK_API_KEY) {
+    const error = new Error('AI reviews are not configured. Please contact support.')
+    error.statusCode = 503
+    throw error
+  }
+  const resumeText = await extractUploadedText(file)
+  return rateResume(resumeText, signal)
 }
 
 function sendJson(response, statusCode, payload) {
@@ -394,7 +406,11 @@ async function extractResume(body) {
 export function createAiApi() {
   return async function summaryApi(request, response, next) {
     const path = request.url?.split('?')[0]
-    if (path !== '/api/generate-summary' && path !== '/api/extract-resume' && path !== '/api/rate-resume') {
+    if (path === '/api/rate-resume') {
+      next()
+      return
+    }
+    if (path !== '/api/generate-summary' && path !== '/api/extract-resume') {
       next()
       return
     }
@@ -415,13 +431,6 @@ export function createAiApi() {
         sendJson(response, 200, { resume: await extractResume(data) })
         return
       }
-      if (path === '/api/rate-resume') {
-        const data = await readJsonBody(request)
-        const resumeText = await extractUploadedText(data)
-        sendJson(response, 200, { rating: await rateResume(resumeText) })
-        return
-      }
-
       const { text, mode } = await readJsonBody(request, MAX_INPUT_LENGTH * 2)
       if (typeof text !== 'string' || !text.trim() || text.length > MAX_INPUT_LENGTH) {
         sendJson(response, 400, { error: `Enter text between 1 and ${MAX_INPUT_LENGTH} characters.` })
@@ -456,7 +465,7 @@ export function createAiApi() {
         sendJson(response, 503, { error: 'The AI service is temporarily busy. Please retry in a little while.' })
         return
       }
-      sendJson(response, 502, { error: path === '/api/rate-resume' ? 'Could not analyze this resume. Please retry.' : 'Could not generate a summary. Check the server configuration and try again.' })
+      sendJson(response, 502, { error: 'Could not generate a summary. Check the server configuration and try again.' })
     }
   }
 }

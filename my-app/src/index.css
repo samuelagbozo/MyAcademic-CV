@@ -1868,11 +1868,12 @@ img {
 .resume-a4-measurement {
     position: absolute;
     top: 0;
-    left: -10000px;
+    left: 50%;
     box-sizing: border-box;
-    width: 100%;
+    width: calc(100% - 24px);
     max-width: 794px;
     padding: 8%;
+    transform: translateX(-50%);
     visibility: hidden;
     pointer-events: none;
 }

@@ -80,11 +80,18 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
       if (!container || container.clientWidth === 0) return
 
       const sheetHeight = container.clientWidth * (297 / 210)
-      const availableHeight = sheetHeight * 0.86
+      const availableHeight = sheetHeight * 0.84
       const measuredSections = Array.from(container.children)
       const nextPages = []
       let currentPage = []
       let currentHeight = 0
+
+      const describe = (section, pageStart = 0, pageEnd, showHeading = true) => ({
+        key: section.key,
+        pageStart,
+        pageEnd,
+        showHeading,
+      })
 
       const finishPage = () => {
         if (!currentPage.length) return
@@ -101,7 +108,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
 
         if (!entries.length) {
           if (currentPage.length && currentHeight + sectionHeight > availableHeight) finishPage()
-          currentPage.push(section)
+          currentPage.push(describe(section))
           currentHeight += sectionHeight
           return
         }
@@ -122,7 +129,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
         const fitsCurrentPage = currentHeight + sectionHeight <= availableHeight
 
         if (fitsCurrentPage) {
-          currentPage.push(cloneElement(section, { pageStart: 0, pageEnd: entryCount, showHeading: true }))
+          currentPage.push(describe(section, 0, entryCount, true))
           currentHeight += sectionHeight
           return
         }
@@ -150,11 +157,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
             end += 1
           }
 
-          currentPage.push(cloneElement(section, {
-            pageStart: start,
-            pageEnd: end,
-            showHeading,
-          }))
+          currentPage.push(describe(section, start, end, showHeading))
           const lastRect = entries[end - 1].getBoundingClientRect()
           currentHeight += overhead + lastRect.bottom - firstRect.top
           start = end
@@ -170,18 +173,28 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
       finishPage()
 
       setPages((current) => {
-        const signature = (pageList) => pageList.map((page) => page.map((section) => `${section.key}:${section.props.pageStart ?? 0}-${section.props.pageEnd ?? ''}:${section.props.showHeading !== false}`).join(',')).join('|')
-        const currentSignature = signature(current)
-        const nextSignature = signature(nextPages)
-        return currentSignature === nextSignature ? current : nextPages
+        const signature = (pageList) => pageList.map((page) => page.map((section) => `${section.key}:${section.pageStart}-${section.pageEnd ?? ''}:${section.showHeading}`).join(',')).join('|')
+        return signature(current) === signature(nextPages) ? current : nextPages
       })
     }
 
-    measureAndPaginate()
-    const observer = new ResizeObserver(measureAndPaginate)
+    let frameId = 0
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(frameId)
+      frameId = window.requestAnimationFrame(measureAndPaginate)
+    }
+    scheduleMeasure()
+    const observer = new ResizeObserver(scheduleMeasure)
     observer.observe(measurementRef.current)
     Array.from(measurementRef.current.children).forEach((child) => observer.observe(child))
-    return () => observer.disconnect()
+    const fonts = document.fonts
+    fonts?.ready.then(scheduleMeasure)
+    fonts?.addEventListener?.('loadingdone', scheduleMeasure)
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      observer.disconnect()
+      fonts?.removeEventListener?.('loadingdone', scheduleMeasure)
+    }
   }, [previewMode, sections])
 
   const activeStepKey = FORM_STEP_SECTION_KEYS[activeFormStep]
@@ -205,7 +218,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
   const manualPageIndex = manualPage?.formStep === activeFormStep
     ? pages.findIndex((page) => page.some((section) => (
       section.key === manualPage.sectionKey
-      && (section.props.pageStart ?? 0) === manualPage.pageStart
+      && section.pageStart === manualPage.pageStart
     )))
     : -1
   const pageIndex = manualPageIndex >= 0 ? manualPageIndex : automaticPageIndex
@@ -218,10 +231,22 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
       setManualPage({
         formStep: activeFormStep,
         sectionKey,
-        pageStart: pages[boundedIndex][0].props.pageStart ?? 0,
+        pageStart: pages[boundedIndex][0].pageStart,
       })
     }
   }
+
+  const sectionByKey = new Map(sections.map((section) => [section.key, section]))
+  const renderPageSections = (page) => page.map((descriptor) => {
+    const section = sectionByKey.get(descriptor.key)
+    if (!section) return null
+    const currentSection = cloneElement(section, {
+      pageStart: descriptor.pageStart,
+      pageEnd: descriptor.pageEnd,
+      showHeading: descriptor.showHeading,
+    })
+    return <div className={`resume-a4-section${descriptor.showHeading === false ? ' resume-a4-section--continuation' : ''}`} key={`${descriptor.key}-${descriptor.pageStart}`}>{currentSection}</div>
+  })
 
   if (previewMode === 'continuous') {
     return (
@@ -272,7 +297,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
           >
             {!hasContent
               ? <p className="resume-a4-empty">Resume Preview</p>
-              : (pages[pageIndex] || sections).map((section) => <div className={`resume-a4-section${section.props.showHeading === false ? ' resume-a4-section--continuation' : ''}`} key={`${section.key}-${section.props.pageStart ?? 0}`}>{section}</div>)}
+              : renderPageSections(pages[pageIndex] || sections.map((section) => ({ key: section.key, pageStart: 0, pageEnd: undefined, showHeading: true })))}
             <span className="resume-a4-page-number" aria-hidden="true">{pageIndex + 1}</span>
           </article>
         </div>
@@ -282,7 +307,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
           <article className="resume-a4-page" key={`print-page-${index + 1}`} aria-label={`Resume page ${index + 1}`}>
             {!hasContent
               ? <p className="resume-a4-empty">Resume Preview</p>
-              : page.map((section) => <div className={`resume-a4-section${section.props.showHeading === false ? ' resume-a4-section--continuation' : ''}`} key={`${section.key}-${section.props.pageStart ?? 0}`}>{section}</div>)}
+              : renderPageSections(page)}
             <span className="resume-a4-page-number" aria-hidden="true">{index + 1}</span>
           </article>
         ))}
