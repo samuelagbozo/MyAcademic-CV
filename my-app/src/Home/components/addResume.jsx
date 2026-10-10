@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { SquarePlus } from 'lucide-react'
+import { LoaderCircle, SquarePlus } from 'lucide-react'
 import SpotlightCard from '../../components/ui/SpotlightCard.jsx'
 
 const fieldClassName = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-function AddResume({ onCreate }) {
+function AddResume({ onCreate, isCreating = false, isWakingServer = false, error = '', onRetry }) {
   const [dialog, setDialog] = useState(null)
   const [title, setTitle] = useState('')
 
@@ -74,9 +74,12 @@ function AddResume({ onCreate }) {
               placeholder="e.g. Product Designer Resume"
               className={`${fieldClassName} mt-2`}
             />
+            {isCreating && <p role="status" aria-live="polite" className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> Creating your resume...</p>}
+            {isWakingServer && <p className="mt-2 text-sm text-muted-foreground">Waking up the server, this can take a moment on the first try.</p>}
+            {error && <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700" role="alert"><p>{error}</p><button type="button" onClick={onRetry} className="mt-2 font-semibold underline underline-offset-2">Try again</button></div>}
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={closeDialogs} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
-              <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Create</button>
+              <button type="submit" disabled={isCreating} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-wait disabled:opacity-70">{isCreating && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}{isCreating ? 'Creating your resume...' : 'Create'}</button>
             </div>
           </form>
           </section>

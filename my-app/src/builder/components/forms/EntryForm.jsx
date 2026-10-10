@@ -1,8 +1,8 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
 
-function EntryForm({ title, description, addLabel, emptyIcon: EmptyIcon, emptyTitle, emptyHint, entries, fields, onAdd, onRemove, onChange, themeColor }) {
+function EntryForm({ title, description, addLabel, emptyIcon: EmptyIcon, emptyTitle, emptyHint, entries, fields, onAdd, onRemove, onMove, onChange, themeColor }) {
   return (
     <section className="mt-5 rounded-lg border-t-4 p-5 shadow-lg" style={{ borderColor: themeColor }}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -12,7 +12,13 @@ function EntryForm({ title, description, addLabel, emptyIcon: EmptyIcon, emptyTi
       {entries.length === 0 && EmptyIcon && <div className="flex flex-col items-center gap-1 py-10 text-center text-slate-500"><EmptyIcon className="mb-2 h-12 w-12 text-slate-300" strokeWidth={1.5} /><p>{emptyTitle}</p><p className="text-sm">{emptyHint}</p></div>}
       <div className="mt-5 space-y-4">
         {entries.map((entry, index) => <div key={index} className="space-y-3 rounded-lg border border-slate-200 p-4">
-          <div className="flex justify-end"><button type="button" onClick={() => onRemove(index)} aria-label={`Remove ${title.toLowerCase()} entry`} className="trash-action flex min-h-11 min-w-11 items-center justify-center text-slate-400 hover:text-red-600 lg:min-h-0 lg:min-w-0"><Trash2 className="trash-icon h-4 w-4" aria-hidden="true" /></button></div>
+          <div className="flex justify-end">
+            {onMove && <>
+              <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0} aria-label={`Move ${title.toLowerCase()} entry up`} className="flex min-h-11 min-w-11 items-center justify-center text-slate-400 disabled:opacity-40"><ChevronUp className="h-4 w-4" aria-hidden="true" /></button>
+              <button type="button" onClick={() => onMove(index, 1)} disabled={index === entries.length - 1} aria-label={`Move ${title.toLowerCase()} entry down`} className="flex min-h-11 min-w-11 items-center justify-center text-slate-400 disabled:opacity-40"><ChevronDown className="h-4 w-4" aria-hidden="true" /></button>
+            </>}
+            <button type="button" onClick={() => onRemove(index)} aria-label={`Remove ${title.toLowerCase()} entry`} className="trash-action flex min-h-11 min-w-11 items-center justify-center text-slate-400 hover:text-red-600 lg:min-h-0 lg:min-w-0"><Trash2 className="trash-icon h-4 w-4" aria-hidden="true" /></button>
+          </div>
           {fields.map(([field, label, placeholder, inputType = 'text']) => {
             const dateValue = entry[field] || ''
             const useDateInput = inputType === 'text' && field.toLowerCase().includes('date') && (!dateValue || /^\d{4}-\d{2}-\d{2}$/.test(dateValue))

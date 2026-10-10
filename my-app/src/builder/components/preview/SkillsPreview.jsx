@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { SKILL_RATING_LABELS } from '../skillRatings.js'
 
 function SkillsPreview({ skills, pageStart = 0, pageEnd = skills.length, showHeading = true }) {
@@ -17,4 +18,4 @@ function SkillsPreview({ skills, pageStart = 0, pageEnd = skills.length, showHea
   )
 }
 
-export default SkillsPreview
+export default memo(SkillsPreview)

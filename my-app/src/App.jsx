@@ -23,7 +23,7 @@ function AppLayout() {
     )
   }
   if (!isSignedIn) {
-    return <Navigate to="/auth/sign-in" replace />
+    return <Navigate to="/auth/sign-in" replace state={{ sessionExpired: true, returnTo: location.pathname }} />
   }
 
   return <Outlet />

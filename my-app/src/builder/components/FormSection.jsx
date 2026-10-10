@@ -62,6 +62,16 @@ function FormSection({ resume, onChange, onSave, onStepChange, isSaving = false 
     onChange((current) => ({ ...current, [section]: current[section].filter((_, i) => i !== index) }))
   }
 
+  function moveEntry(section, index, direction) {
+    onChange((current) => {
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= current[section].length) return current
+      const entries = [...current[section]]
+      ;[entries[index], entries[nextIndex]] = [entries[nextIndex], entries[index]]
+      return { ...current, [section]: entries }
+    })
+  }
+
   function addSkill() {
     const name = skillInput.trim()
     if (!name) return
@@ -116,15 +126,15 @@ function FormSection({ resume, onChange, onSave, onStepChange, isSaving = false 
         <div className="min-h-[370px] pt-2">
           {step === 0 && <PersonalDetail resume={resume} onChange={updateField} onPhoto={uploadPhoto} themeColor={resume.themeColor} />}
           {step === 1 && <SummaryForm value={resume.summary} onChange={updateSummary} themeColor={resume.themeColor} />}
-          {step === 2 && <EducationForm entries={resume.education} themeColor={resume.themeColor} onAdd={() => addEntry('education')} onRemove={(index) => removeEntry('education', index)} onChange={(index, field, value) => updateEntry('education', index, field, value)} />}
-          {step === 3 && <ExperienceForm entries={resume.experience} themeColor={resume.themeColor} onAdd={() => addEntry('experience')} onRemove={(index) => removeEntry('experience', index)} onChange={(index, field, value) => updateEntry('experience', index, field, value)} />}
-          {step === 4 && <ProjectForm entries={resume.projects} themeColor={resume.themeColor} onAdd={() => addEntry('projects')} onRemove={(index) => removeEntry('projects', index)} onChange={(index, field, value) => updateEntry('projects', index, field, value)} />}
+          {step === 2 && <EducationForm entries={resume.education} themeColor={resume.themeColor} onAdd={() => addEntry('education')} onRemove={(index) => removeEntry('education', index)} onMove={(index, direction) => moveEntry('education', index, direction)} onChange={(index, field, value) => updateEntry('education', index, field, value)} />}
+          {step === 3 && <ExperienceForm entries={resume.experience} themeColor={resume.themeColor} onAdd={() => addEntry('experience')} onRemove={(index) => removeEntry('experience', index)} onMove={(index, direction) => moveEntry('experience', index, direction)} onChange={(index, field, value) => updateEntry('experience', index, field, value)} />}
+          {step === 4 && <ProjectForm entries={resume.projects} themeColor={resume.themeColor} onAdd={() => addEntry('projects')} onRemove={(index) => removeEntry('projects', index)} onMove={(index, direction) => moveEntry('projects', index, direction)} onChange={(index, field, value) => updateEntry('projects', index, field, value)} />}
           {step === 5 && <SkillsForm skills={resume.skills} value={skillInput} onValueChange={setSkillInput} onSkillChange={updateSkill} onAdd={addSkill} onRemove={removeSkill} themeColor={resume.themeColor} />}
-          {step === 6 && <CertificationsForm entries={resume.certifications} themeColor={resume.themeColor} onAdd={() => addEntry('certifications')} onRemove={(index) => removeEntry('certifications', index)} onChange={(index, field, value) => updateEntry('certifications', index, field, value)} />}
-          {step === 7 && <LeadershipExperienceForm entries={resume.leadershipExperience} themeColor={resume.themeColor} onAdd={() => addEntry('leadershipExperience')} onRemove={(index) => removeEntry('leadershipExperience', index)} onChange={(index, field, value) => updateEntry('leadershipExperience', index, field, value)} />}
-          {step === 8 && <AchievementsForm entries={resume.achievements} themeColor={resume.themeColor} onAdd={() => addEntry('achievements')} onRemove={(index) => removeEntry('achievements', index)} onChange={(index, field, value) => updateEntry('achievements', index, field, value)} />}
+          {step === 6 && <CertificationsForm entries={resume.certifications} themeColor={resume.themeColor} onAdd={() => addEntry('certifications')} onRemove={(index) => removeEntry('certifications', index)} onMove={(index, direction) => moveEntry('certifications', index, direction)} onChange={(index, field, value) => updateEntry('certifications', index, field, value)} />}
+          {step === 7 && <LeadershipExperienceForm entries={resume.leadershipExperience} themeColor={resume.themeColor} onAdd={() => addEntry('leadershipExperience')} onRemove={(index) => removeEntry('leadershipExperience', index)} onMove={(index, direction) => moveEntry('leadershipExperience', index, direction)} onChange={(index, field, value) => updateEntry('leadershipExperience', index, field, value)} />}
+          {step === 8 && <AchievementsForm entries={resume.achievements} themeColor={resume.themeColor} onAdd={() => addEntry('achievements')} onRemove={(index) => removeEntry('achievements', index)} onMove={(index, direction) => moveEntry('achievements', index, direction)} onChange={(index, field, value) => updateEntry('achievements', index, field, value)} />}
           {step === 9 && <CustomSectionsForm sections={resume.customSections} onChange={(customSections) => onChange((current) => ({ ...current, customSections }))} />}
-          {step === 10 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
+          {step === 10 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onMove={(index, direction) => moveEntry('references', index, direction)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
         </div>
         <div className="mt-6 grid grid-cols-2 items-center gap-2 border-t border-slate-100 pt-5 sm:flex sm:justify-between lg:gap-0">
           <button type="button" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0} className="career-form-secondary min-h-11 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:invisible sm:px-4 sm:text-sm lg:min-h-0">Previous</button>

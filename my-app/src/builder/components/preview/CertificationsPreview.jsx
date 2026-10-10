@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function CertificationsPreview({ certifications, pageStart = 0, pageEnd = certifications.length, showHeading = true }) {
   const visibleCertifications = certifications.slice(pageStart, pageEnd)
 
@@ -20,4 +21,4 @@ function CertificationsPreview({ certifications, pageStart = 0, pageEnd = certif
   )
 }
 
-export default CertificationsPreview
+export default memo(CertificationsPreview)

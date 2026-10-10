@@ -12,7 +12,7 @@ import { apiRequest } from '../lib/api.js'
 const MAX_RESUME_UPLOAD_SIZE = 10 * 1024 * 1024
 
 function Home() {
-  const { getToken } = useAuth()
+  const { getToken, isLoaded: isAuthLoaded, isSignedIn } = useAuth()
   const [resumes, setResumes] = useState([])
   const [isLoadingResumes, setIsLoadingResumes] = useState(true)
   const [resumeError, setResumeError] = useState('')
@@ -27,6 +27,10 @@ function Home() {
   const [isRating, setIsRating] = useState(false)
   const [ratingError, setRatingError] = useState('')
   const [pendingReview, setPendingReview] = useState(null)
+  const [isCreatingResume, setIsCreatingResume] = useState(false)
+  const [isWakingServer, setIsWakingServer] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const createLockRef = useRef(false)
   const recentResumes = [...resumes]
     .sort((first, second) => {
       const firstUpdated = new Date(first.updatedAt || first.createdAt || 0).getTime()
@@ -60,20 +64,69 @@ function Home() {
     }
   }, [getToken])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    void apiRequest('/health', { signal: controller.signal }).catch((error) => {
+      if (import.meta.env.DEV) console.warn('Resume API health check failed:', error)
+    })
+    return () => controller.abort()
+  }, [])
+
   async function addResume(resume) {
+    if (createLockRef.current) return false
+    createLockRef.current = true
+    setIsCreatingResume(true)
+    setCreateError('')
     setResumeError('')
+    setIsWakingServer(false)
+    const controller = new AbortController()
+    const wakeTimer = window.setTimeout(() => setIsWakingServer(true), 5000)
+    const timeout = window.setTimeout(() => controller.abort(), 75000)
     try {
+      if (!isAuthLoaded || !isSignedIn) {
+        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home' } })
+        return false
+      }
       const token = await getToken()
-      await apiRequest('/resumes', {
-        method: 'POST',
-        token,
-        body: JSON.stringify({ resume }),
-      })
-      navigate(`/builder/${resume.id}`, { state: { title: resume.title } })
+      if (!token) {
+        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home' } })
+        return false
+      }
+      let result
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          result = await apiRequest('/resumes', {
+            method: 'POST', token, signal: controller.signal,
+            body: JSON.stringify({ resume }),
+          })
+          break
+        } catch (error) {
+          const retryable = !controller.signal.aborted && (error instanceof TypeError || error.cause instanceof TypeError || [502, 503, 504].includes(error.status))
+          if (!retryable || attempt === 2) throw error
+          await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)))
+        }
+      }
+      const createdResume = result?.resume
+      const resumeId = createdResume?.id || createdResume?.resumeId || resume.id
+      if (!resumeId) throw new Error('The server created the resume but did not return its ID. Please retry.')
+      navigate(`/builder/${encodeURIComponent(resumeId)}`, { state: { title: createdResume?.title || resume.title, resume: createdResume || resume } })
       return true
     } catch (error) {
-      setResumeError(error.message || 'Could not save this resume.')
+      if (import.meta.env.DEV) console.error('Could not create resume:', error)
+      if (error.status === 401) {
+        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home' } })
+      } else if (controller.signal.aborted) {
+        setCreateError('The server took too long to respond. Please try again.')
+      } else {
+        setCreateError('We couldn’t create your resume. Please check your connection and try again.')
+      }
       return false
+    } finally {
+      window.clearTimeout(wakeTimer)
+      window.clearTimeout(timeout)
+      setIsWakingServer(false)
+      setIsCreatingResume(false)
+      createLockRef.current = false
     }
   }
 
@@ -318,7 +371,7 @@ function Home() {
         <section aria-labelledby="resume-actions-heading" className="mb-10 min-w-0">
           <h2 id="resume-actions-heading" className="mb-4 text-lg font-semibold text-slate-900">Get started</h2>
           <div className="grid min-w-0 grid-cols-1 items-stretch gap-4 min-[480px]:grid-cols-2 sm:gap-6">
-            <AddResume onCreate={addResume} />
+            <AddResume onCreate={addResume} isCreating={isCreatingResume} isWakingServer={isWakingServer} error={createError} onRetry={() => document.getElementById('resume-title')?.form?.requestSubmit()} />
             <SpotlightCard
               onDragOver={handleUploadDragOver}
               onDragLeave={handleUploadDragLeave}

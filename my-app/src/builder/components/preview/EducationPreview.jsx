@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function EducationPreview({ education, pageStart = 0, pageEnd = education.length, showHeading = true }) {
   const visibleEducation = education.slice(pageStart, pageEnd)
 
@@ -15,4 +16,4 @@ function EducationPreview({ education, pageStart = 0, pageEnd = education.length
   )
 }
 
-export default EducationPreview
+export default memo(EducationPreview)

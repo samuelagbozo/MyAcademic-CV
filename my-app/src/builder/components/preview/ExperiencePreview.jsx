@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function ExperiencePreview({ experience, pageStart = 0, pageEnd = experience.length, showHeading = true }) {
   const visibleExperience = experience.slice(pageStart, pageEnd)
 
@@ -15,4 +16,4 @@ function ExperiencePreview({ experience, pageStart = 0, pageEnd = experience.len
   )
 }
 
-export default ExperiencePreview
+export default memo(ExperiencePreview)

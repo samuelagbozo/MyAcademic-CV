@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function AchievementsPreview({ achievements, pageStart = 0, pageEnd = achievements.length, showHeading = true }) {
   const visibleAchievements = achievements.slice(pageStart, pageEnd)
 
@@ -19,4 +20,4 @@ function AchievementsPreview({ achievements, pageStart = 0, pageEnd = achievemen
   )
 }
 
-export default AchievementsPreview
+export default memo(AchievementsPreview)

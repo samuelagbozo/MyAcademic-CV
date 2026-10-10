@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function LeadershipExperiencePreview({ experiences, pageStart = 0, pageEnd = experiences.length, showHeading = true }) {
   const visibleExperiences = experiences.slice(pageStart, pageEnd)
 
@@ -18,4 +19,4 @@ function LeadershipExperiencePreview({ experiences, pageStart = 0, pageEnd = exp
   )
 }
 
-export default LeadershipExperiencePreview
+export default memo(LeadershipExperiencePreview)

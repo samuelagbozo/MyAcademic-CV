@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function PersonalDetailPreview({ resume }) {
   const name = [resume.firstName, resume.middleName, resume.lastName].filter(Boolean).join(' ') || resume.fullName || 'Your Name'
   const address = resume.address || resume.location
@@ -25,4 +26,4 @@ function PersonalDetailPreview({ resume }) {
   )
 }
 
-export default PersonalDetailPreview
+export default memo(PersonalDetailPreview)

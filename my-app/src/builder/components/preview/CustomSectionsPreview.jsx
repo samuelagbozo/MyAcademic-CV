@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { hasRichTextContent, sanitizeRichText } from '../../richText.js'
 
 function CustomSectionsPreview({ sections = [], pageStart = 0, pageEnd = sections.length }) {
@@ -28,4 +29,4 @@ function CustomSectionsPreview({ sections = [], pageStart = 0, pageEnd = section
   )
 }
 
-export default CustomSectionsPreview
+export default memo(CustomSectionsPreview)

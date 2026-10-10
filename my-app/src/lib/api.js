@@ -1,6 +1,10 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')
+const configuredApiUrl = import.meta.env.VITE_API_URL
+const API_BASE_URL = (configuredApiUrl || (import.meta.env.DEV ? 'http://localhost:3000' : '')).replace(/\/$/, '')
 
 export async function apiRequest(path, { token, ...options } = {}) {
+  if (!API_BASE_URL) {
+    throw new Error('The resume server URL is not configured. Please contact support.')
+  }
   const headers = new Headers(options.headers)
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
@@ -22,7 +26,9 @@ export async function apiRequest(path, { token, ...options } = {}) {
 
   const result = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new Error(result?.error || `Request failed with status ${response.status}.`)
+    const error = new Error(result?.error || `Request failed with status ${response.status}.`)
+    error.status = response.status
+    throw error
   }
 
   return result

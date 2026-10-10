@@ -17,7 +17,7 @@ await connectToMongoDB()
 
 const allowedOrigins = (process.env.CLIENT_URL || '')
   .split(',')
-  .map(origin => origin.trim().replace(/\/+$/, ''))
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
   .filter(Boolean)
 
 if (process.env.NODE_ENV !== 'production') {
@@ -30,8 +30,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use(cors({
-  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin.replace(/\/+$/, ''))) {
       callback(null, true)
@@ -39,6 +37,9 @@ app.use(cors({
     }
     callback(new Error('Origin is not allowed by CORS.'))
   },
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
 }))
 app.use(createAiApi())
 app.use(express.json({ limit: '2mb' }))
@@ -46,6 +47,10 @@ app.use(clerkMiddleware())
 
 app.get('/', (req, res) => {
   res.send('Server is Live.....')
+})
+
+app.get('/api/health', (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ status: 'ok' })
 })
 
 app.use('/api', resumeRoutes)

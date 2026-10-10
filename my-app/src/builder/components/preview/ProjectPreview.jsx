@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function ProjectPreview({ projects, pageStart = 0, pageEnd = projects.length, showHeading = true }) {
   const visibleProjects = projects.slice(pageStart, pageEnd)
 
@@ -9,4 +10,4 @@ function ProjectPreview({ projects, pageStart = 0, pageEnd = projects.length, sh
   )
 }
 
-export default ProjectPreview
+export default memo(ProjectPreview)

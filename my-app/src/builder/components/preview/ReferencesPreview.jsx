@@ -1,3 +1,4 @@
+import { memo } from 'react'
 function ReferencesPreview({ references, pageStart = 0, pageEnd = references.length, showHeading = true }) {
   const visibleReferences = references.slice(pageStart, pageEnd)
 
@@ -18,4 +19,4 @@ function ReferencesPreview({ references, pageStart = 0, pageEnd = references.len
   )
 }
 
-export default ReferencesPreview
+export default memo(ReferencesPreview)

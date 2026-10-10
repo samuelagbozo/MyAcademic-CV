@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/react-router'
 import { ArrowLeft, Download, Share2 } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router'
@@ -96,9 +96,16 @@ function Builder() {
   const [resume, setResume] = useState(() => normalizeResume(state?.resume, id, state?.title))
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
   const [previewMode, setPreviewMode] = useState(readPreviewMode)
   const [activeFormStep, setActiveFormStep] = useState(0)
+  const resumeRef = useRef(resume)
+  const revisionRef = useRef(0)
+  const dirtyRef = useRef(false)
+  const saveQueueRef = useRef(Promise.resolve())
+  const saveCountRef = useRef(0)
+  resumeRef.current = resume
 
   useEffect(() => {
     let isCurrent = true
@@ -133,28 +140,52 @@ function Builder() {
   }, [isLoading, state?.printOnLoad])
 
   function updateResume(updater) {
+    revisionRef.current += 1
+    dirtyRef.current = true
+    setIsDirty(true)
     setResume(updater)
-    setSavedMessage('')
+    setSavedMessage('Unsaved changes')
   }
 
-  async function saveResume() {
+  const saveResume = useCallback(async (snapshot = resumeRef.current) => {
+    const revision = revisionRef.current
+    saveCountRef.current += 1
     setIsSaving(true)
     setSavedMessage('Saving...')
-    try {
+    const saveTask = saveQueueRef.current.then(async () => {
       const token = await getToken()
-      const result = await apiRequest(`/resumes/${encodeURIComponent(id)}`, {
+      await apiRequest(`/resumes/${encodeURIComponent(id)}`, {
         method: 'PUT',
         token,
-        body: JSON.stringify({ resume }),
+        body: JSON.stringify({ resume: snapshot }),
       })
-      setResume(normalizeResume(result.resume, id, resume.title))
-      setSavedMessage('Changes saved.')
+    })
+    saveQueueRef.current = saveTask.catch(() => {})
+
+    try {
+      await saveTask
+      if (revisionRef.current === revision) {
+        dirtyRef.current = false
+        setIsDirty(false)
+        setSavedMessage('Saved')
+      }
     } catch (error) {
-      setSavedMessage(error.message || 'Could not save this resume.')
+      if (revisionRef.current === revision) {
+        setSavedMessage(error.message || 'Could not save this resume.')
+      }
     } finally {
-      setIsSaving(false)
+      saveCountRef.current -= 1
+      setIsSaving(saveCountRef.current > 0)
     }
-  }
+  }, [getToken, id])
+
+  useEffect(() => {
+    if (!isDirty || isLoading) return undefined
+    const timer = window.setTimeout(() => {
+      void saveResume(resume)
+    }, 900)
+    return () => window.clearTimeout(timer)
+  }, [isDirty, isLoading, resume, saveResume])
 
   async function shareResume() {
     const resumeText = document.getElementById('resume-preview')?.innerText
@@ -202,7 +233,7 @@ function Builder() {
           <ArrowLeft className="h-4 w-4" /> Back to My Resumes
         </button>
         <div className="flex flex-wrap items-center gap-3">
-          <span role="status" className="text-sm text-slate-500">{savedMessage}</span>
+          <span role="status" className="text-sm text-slate-500">{savedMessage || (isSaving ? 'Saving...' : '')}</span>
           <button type="button" onClick={shareResume} className="career-form-secondary inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Share2 className="h-4 w-4" /> Share
           </button>
