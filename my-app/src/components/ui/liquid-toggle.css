@@ -1,0 +1,113 @@
+.liquid-toggle {
+  --toggle-off: #d2d6e9;
+  --toggle-on: #83ae40;
+  --toggle-border: #647168;
+  position: relative;
+  display: inline-flex;
+  width: 52px;
+  height: 32px;
+  flex: 0 0 auto;
+  cursor: pointer;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.dark .liquid-toggle {
+  --toggle-off: #37443a;
+  --toggle-on: var(--dark-accent);
+  --toggle-border: var(--dark-border);
+}
+
+.liquid-toggle__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  appearance: none;
+  border: 1.5px solid var(--toggle-border);
+  border-radius: 999px;
+  outline: none;
+  background-color: var(--toggle-off);
+  cursor: pointer;
+  transition: background-color 350ms ease, border-color 350ms ease;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.career-theme .liquid-toggle__input {
+  border-color: var(--toggle-border);
+  background-color: var(--toggle-off);
+  padding: 0;
+}
+
+.dark .career-theme .liquid-toggle__input {
+  border-color: var(--toggle-border);
+  background-color: var(--toggle-off);
+}
+
+.liquid-toggle__input:hover {
+  filter: brightness(0.94);
+}
+
+.liquid-toggle__input[data-checked="true"] {
+  border-color: var(--toggle-on);
+  background-color: var(--toggle-on);
+}
+
+.career-theme .liquid-toggle__input[data-checked="true"],
+.dark .career-theme .liquid-toggle__input[data-checked="true"] {
+  border-color: var(--toggle-on);
+  background-color: var(--toggle-on);
+}
+
+.liquid-toggle__input:focus-visible {
+  outline: 2px solid #83ae40;
+  outline-offset: 3px;
+}
+
+.dark .liquid-toggle__input:focus-visible {
+  outline-color: var(--dark-focus);
+}
+
+.liquid-toggle__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: #fffefa;
+  pointer-events: none;
+}
+
+.liquid-toggle__circle,
+.liquid-toggle__drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  backface-visibility: hidden;
+}
+
+.liquid-toggle__drop {
+  transition-duration: 700ms;
+}
+
+.liquid-toggle--success {
+  --toggle-on: #10b981;
+}
+
+.liquid-toggle--warning {
+  --toggle-on: #f59e0b;
+}
+
+.liquid-toggle--danger {
+  --toggle-on: #ef4444;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-toggle__input,
+  .liquid-toggle__circle,
+  .liquid-toggle__drop {
+    transition-duration: 0.01ms;
+  }
+}

@@ -29,13 +29,13 @@ Resume data is stored in MongoDB and scoped to the signed-in Clerk user. The bac
 1. Copy `Server/.env.example` to `Server/.env`.
 2. Set `MONGODB_URI` and `MONGODB_DB_NAME` for your MongoDB deployment, and set `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` from the same Clerk instance as `VITE_CLERK_PUBLISHABLE_KEY`.
 3. In `my-app/.env.local`, set `VITE_API_URL=http://localhost:3000` and your `VITE_CLERK_PUBLISHABLE_KEY`.
-4. Start the backend from `Server` with `npm start`, then start the frontend from `my-app` with `npm run dev`.
+4. Keep the backend running from `Server` with `npm start`, then start the frontend from `my-app` with `npm run dev`. The API allows both `localhost` and `127.0.0.1` on the Vite development and preview ports.
 
 The API creates the `users`, `resumes`, and `reviews` collections and their indexes on startup. Existing browser-only resumes are not automatically imported into a user account.
 
 ## Resume and AI review history
 
-Use **My resumes** in the top navigation to open the full saved-resume history. Use **AI reviews** to browse previous resume scores and recommendations. Successful AI reviews are saved to MongoDB with the source file name, full rating result, and review timestamp. Select a review to reopen its saved result; review history is scoped to the signed-in Clerk user.
+Use **My resumes** in the top navigation to open the full saved-resume history. Use **AI reviews** to browse previous resume scores and recommendations. Successful AI reviews are saved to MongoDB with the source file name, full rating result, and review timestamp. Select a review to reopen its saved result; review history is scoped to the signed-in Clerk user. If analysis finishes but saving fails, the result stays available on the Home page and **Retry saving review** sends it to the database without repeating the analysis.
 
 ## Scripts
 

@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@clerk/react-router'
-import { Check, Clock3, Download, FileUp, FileText, GraduationCap, Pencil, Sparkles, Trash2, Upload } from 'lucide-react'
+import { Check, Clock3, Download, FileUp, FileText, Pencil, Sparkles, Trash2, Upload } from 'lucide-react'
 import Header from '../components/Header.jsx'
+import SpotlightCard from '../components/ui/SpotlightCard.jsx'
+import TiltCard from '../components/ui/TiltCard.jsx'
+import NewtonsCradle from '../components/ui/NewtonsCradle.jsx'
 import AddResume from './components/addResume.jsx'
 import { apiRequest } from '../lib/api.js'
+
+const MAX_RESUME_UPLOAD_SIZE = 10 * 1024 * 1024
 
 function Home() {
   const { getToken } = useAuth()
@@ -14,13 +19,21 @@ function Home() {
   const [deletingResumeId, setDeletingResumeId] = useState('')
   const [shreddingResumeId, setShreddingResumeId] = useState('')
   const navigate = useNavigate()
-  const [isUploadOpen, setIsUploadOpen] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState(null)
+  const resumeFileInputRef = useRef(null)
   const [isImporting, setIsImporting] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [isUploadDragOver, setIsUploadDragOver] = useState(false)
   const [ratingFile, setRatingFile] = useState(null)
   const [isRating, setIsRating] = useState(false)
   const [ratingError, setRatingError] = useState('')
+  const [pendingReview, setPendingReview] = useState(null)
+  const recentResumes = [...resumes]
+    .sort((first, second) => {
+      const firstUpdated = new Date(first.updatedAt || first.createdAt || 0).getTime()
+      const secondUpdated = new Date(second.updatedAt || second.createdAt || 0).getTime()
+      return secondUpdated - firstUpdated
+    })
+    .slice(0, 3)
 
   function openResume(resume) {
     navigate(`/builder/${resume.id}`, { state: { title: resume.title } })
@@ -85,18 +98,45 @@ function Home() {
     }
   }
 
-  function selectResumeFile(event) {
-    setUploadedFile(event.target.files?.[0] || null)
+  function handleUploadFile(file) {
+    if (!file || isImporting) return
     setUploadError('')
-  }
-
-  async function importResume() {
-    if (!uploadedFile) return
-    if (uploadedFile.size > 8 * 1024 * 1024) {
-      setUploadError('Choose a resume file smaller than 8 MB.')
+    if (!/\.(pdf|docx)$/i.test(file.name) || file.size > MAX_RESUME_UPLOAD_SIZE) {
+      setUploadError('Please choose a PDF or DOCX file under 10MB.')
       return
     }
+    void importResume(file)
+  }
 
+  function selectResumeFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    handleUploadFile(file)
+  }
+
+  function handleUploadDragOver(event) {
+    event.preventDefault()
+    if (isImporting || !Array.from(event.dataTransfer.types).includes('Files')) return
+    setIsUploadDragOver(true)
+  }
+
+  function handleUploadDragLeave(event) {
+    if (!event.currentTarget.contains(event.relatedTarget)) setIsUploadDragOver(false)
+  }
+
+  function handleUploadDrop(event) {
+    event.preventDefault()
+    setIsUploadDragOver(false)
+    const file = event.dataTransfer.files?.[0]
+    if (file) handleUploadFile(file)
+  }
+
+  async function importResume(file) {
+    if (!file || file.size > MAX_RESUME_UPLOAD_SIZE) {
+      setUploadError('Please choose a PDF or DOCX file under 10MB.')
+      return
+    }
     setIsImporting(true)
     setUploadError('')
     try {
@@ -111,18 +151,24 @@ function Home() {
           resolve(result.slice(result.indexOf(',') + 1))
         }
         reader.onerror = () => reject(new Error('Could not read the selected file.'))
-        reader.readAsDataURL(uploadedFile)
+          reader.readAsDataURL(file)
       })
       const response = await fetch('/api/extract-resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileBase64: fileData, name: uploadedFile.name, mimeType: uploadedFile.type }),
+        body: JSON.stringify({
+          fileBase64: fileData,
+          name: file.name,
+          mimeType: /\.pdf$/i.test(file.name)
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
       })
       const result = await response.json().catch(() => null)
       if (!response.ok) throw new Error(result?.error || 'Could not extract this resume.')
       if (!result?.resume || typeof result.resume !== 'object') throw new Error('AI did not return resume details.')
 
-      const title = uploadedFile.name.replace(/\.[^.]+$/, '').trim() || 'Imported Resume'
+      const title = file.name.replace(/\.[^.]+$/, '').trim() || 'Imported Resume'
       const saved = await addResume({
         ...result.resume,
         id: crypto.randomUUID(),
@@ -152,9 +198,9 @@ function Home() {
       event.target.value = ''
       return
     }
-    if (file.size > 8 * 1024 * 1024) {
+    if (file.size > MAX_RESUME_UPLOAD_SIZE) {
       setRatingFile(null)
-      setRatingError('Choose a resume file smaller than 8 MB.')
+      setRatingError('Choose a resume file smaller than 10 MB.')
       event.target.value = ''
       return
     }
@@ -163,12 +209,18 @@ function Home() {
   }
 
   async function rateUploadedResume() {
+    if (pendingReview) {
+      await retrySaveReview()
+      return
+    }
+
     if (!ratingFile) {
       setRatingError('Choose a PDF or DOCX resume to analyze.')
       return
     }
     setIsRating(true)
     setRatingError('')
+    let generatedReview = null
     try {
       const fileData = await new Promise((resolve, reject) => {
         const reader = new FileReader()
@@ -191,22 +243,40 @@ function Home() {
       const result = await response.json().catch(() => null)
       if (!response.ok) throw new Error(result?.error || 'Could not analyze this resume. Please retry.')
       if (!result?.rating || typeof result.rating !== 'object') throw new Error('The AI did not return a valid rating. Please retry.')
-      const reviewId = crypto.randomUUID()
-      const token = await getToken()
-      await apiRequest('/reviews', {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          review: {
-            id: reviewId,
-            fileName: ratingFile.name,
-            rating: result.rating,
-          },
-        }),
-      })
-      navigate(`/resume-rating/${reviewId}`, { state: { rating: result.rating, fileName: ratingFile.name, resumeFile: ratingFile } })
+      const review = { id: crypto.randomUUID(), fileName: ratingFile.name, rating: result.rating }
+      generatedReview = review
+      setPendingReview(review)
+      await saveReviewAndOpen(review, ratingFile)
     } catch (error) {
-      setRatingError(error.message || 'Could not analyze this resume. Please retry.')
+      setRatingError(generatedReview || pendingReview
+        ? `Your review is ready, but it could not be saved: ${error.message || 'Please retry saving.'}`
+        : error.message || 'Could not analyze this resume. Please retry.')
+    } finally {
+      setIsRating(false)
+    }
+  }
+
+  async function saveReviewAndOpen(review, file) {
+    const token = await getToken()
+    await apiRequest('/reviews', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ review }),
+    })
+    setPendingReview(null)
+    navigate(`/resume-rating/${encodeURIComponent(review.id)}`, {
+      state: { rating: review.rating, fileName: review.fileName, resumeFile: file },
+    })
+  }
+
+  async function retrySaveReview() {
+    if (!pendingReview) return
+    setIsRating(true)
+    setRatingError('')
+    try {
+      await saveReviewAndOpen(pendingReview, ratingFile)
+    } catch (error) {
+      setRatingError(`Your review is ready, but it could not be saved: ${error.message || 'Please retry saving.'}`)
     } finally {
       setIsRating(false)
     }
@@ -215,19 +285,27 @@ function Home() {
   return (
     <div className="career-theme min-h-screen font-sans text-[#1B342B]">
       <Header action="dashboard" />
-      <main className="mx-auto w-full max-w-[1400px] px-6 py-8 md:px-10">
-        <section id="resume-list" className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <input
+        ref={resumeFileInputRef}
+        type="file"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="sr-only"
+        aria-label="Choose a PDF or DOCX resume to upload"
+        onChange={selectResumeFile}
+      />
+      <main className="mx-auto min-w-0 w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 md:px-10">
+        <section id="resume-list" className="mb-7 flex min-w-0 flex-wrap items-end justify-between gap-4">
           <div>
             <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" aria-hidden="true" />
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 dark:bg-[#C5F26E]" aria-hidden="true" />
               Your workspace
             </p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">My Resumes</h1>
-            <p className="mt-2 text-sm text-slate-500">Pick up where you left off or start something new.</p>
+            <h1 className="break-words text-2xl font-bold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">My Resumes</h1>
+            <p className="mt-2 break-words text-sm leading-relaxed text-slate-500">Pick up where you left off or start something new.</p>
           </div>
-          <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-500 sm:flex">
+          <div className="flex w-fit shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-500">
             <FileText className="h-4 w-4 text-indigo-500" aria-hidden="true" />
-            {isLoadingResumes ? 'Loading your workspace' : `${resumes.length} ${resumes.length === 1 ? 'resume' : 'resumes'} saved`}
+            {isLoadingResumes ? <NewtonsCradle label="Loading your workspace" size={24} /> : `${resumes.length} ${resumes.length === 1 ? 'resume' : 'resumes'} saved`}
           </div>
         </section>
 
@@ -238,34 +316,100 @@ function Home() {
         )}
 
         {isLoadingResumes && (
-          <p role="status" className="mb-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
-            Loading your saved resumes...
-          </p>
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white py-5">
+            <NewtonsCradle label="Loading your saved resumes" />
+          </div>
         )}
 
-        <section aria-labelledby="resume-actions-heading" className="mb-10">
+        <section aria-labelledby="resume-actions-heading" className="mb-10 min-w-0">
           <h2 id="resume-actions-heading" className="mb-4 text-lg font-semibold text-slate-900">Get started</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 items-stretch gap-4 min-[480px]:grid-cols-2 sm:gap-6">
             <AddResume onCreate={addResume} />
-            <button
-              type="button"
-              onClick={() => setIsUploadOpen(true)}
-              className="group flex min-h-[300px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-white p-6 text-center transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            <SpotlightCard
+              onDragOver={handleUploadDragOver}
+              onDragLeave={handleUploadDragLeave}
+              onDrop={handleUploadDrop}
+              className={`group h-full min-h-[280px] w-full min-w-0 rounded-3xl border border-[#1B342B]/10 bg-[#FFFEFA] shadow-[0_8px_30px_-25px_rgba(27,52,43,0.5)] transition-[border-color,box-shadow] hover:border-[#83AE40]/40 hover:shadow-[0_16px_36px_-24px_rgba(27,52,43,0.32)] ${isUploadDragOver ? 'career-upload-drop-target' : ''}`}
             >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-100 bg-white text-indigo-600 shadow-sm transition-transform group-hover:scale-105">
-                <Upload className="upload-icon h-6 w-6" aria-hidden="true" />
-              </span>
-              <span className="font-semibold text-slate-800">Upload your resume with AI</span>
-              <span className="max-w-60 text-sm text-slate-400">Drop in a PDF or DOCX and let AI help you get started.</span>
-            </button>
+              <div className="flex h-full min-h-[280px] w-full min-w-0 flex-col items-center gap-4 break-words p-4 text-center sm:p-6">
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#1B342B]/10 bg-white text-[#2C4A3E] shadow-sm transition-transform group-hover:scale-105">
+                  <Upload className="upload-icon h-6 w-6" aria-hidden="true" />
+                </span>
+                <span className="break-words font-semibold text-[#1B342B]">Upload your resume with AI</span>
+                <span className="max-w-60 break-words text-sm leading-relaxed text-[#71806F]">Drop in a PDF or DOCX and let AI help you get started.</span>
+                <button
+                  type="button"
+                  onClick={() => resumeFileInputRef.current?.click()}
+                  disabled={isImporting}
+                  className="mt-auto rounded-full bg-[#C5F26E] px-5 py-2.5 text-sm font-semibold text-[#1B342B] transition-colors hover:bg-[#b9e85e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80"
+                >
+                  {isImporting ? 'Uploading...' : 'Choose a file'}
+                </button>
+                {uploadError && <p role="alert" aria-live="assertive" className="max-w-full break-words text-sm font-medium text-red-700 dark:text-red-300">{uploadError}</p>}
+              </div>
+            </SpotlightCard>
           </div>
         </section>
 
+        <TiltCard className="mb-10 min-w-0" maxTilt={3} lift={4}>
+        <section id="rate-resume" className="career-review-history-card scroll-mt-6 min-w-0 rounded-2xl p-4 sm:p-6 md:p-8">
+          <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div>
+              <span className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-[#83AE40]/50 bg-[#EDF2E6] px-2.5 py-1 text-xs font-medium text-[#42633A]">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> AI-powered
+              </span>
+              <h2 className="text-2xl font-bold tracking-tight text-[#1B342B]">Rate your resume with AI</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#647168]">
+                Get a detailed academic CV review against the Academic CV Master Guide, with a score and practical next steps.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <label htmlFor="rating-resume-file" className={`inline-flex min-h-11 max-w-full min-w-0 items-center gap-2 rounded-lg border-2 border-[#1B342B]/50 bg-[#FFFEFA] px-3 py-2.5 text-sm font-medium text-[#526158] shadow-[3px_3px_0_rgba(44,74,62,0.14)] transition-colors focus-within:ring-2 focus-within:ring-[#83AE40] sm:px-4 ${pendingReview ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[#EDF2E6]'}`}>
+                  <FileUp className="h-4 w-4 text-[#567B42]" aria-hidden="true" />
+                  <span className="min-w-0 break-all">{ratingFile?.name || 'Choose PDF or DOCX'}</span>
+                </label>
+                <input id="rating-resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="sr-only" onChange={selectRatingFile} disabled={isRating || Boolean(pendingReview)} />
+                <span className="text-xs text-[#71806F]">Text-based files up to 10 MB</span>
+              </div>
+              {ratingError && <p role="alert" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
+              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your resume against the guide. This may take a moment...</p>}
+            </div>
+
+            <div className="rounded-xl border-2 border-[#1B342B] bg-[#F2EFE6] p-5 shadow-[5px_5px_0_#2C4A3E]">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#1B342B]">Your CV review</span>
+                <span className="rounded-full border border-[#1B342B]/15 bg-[#FFFEFA] px-2.5 py-1 text-xs font-medium text-[#647168]">PDF or DOCX</span>
+              </div>
+              <div className="mt-4 flex items-center">
+                <img src="/academic-cv-logo.png" alt="My Academic CV" className="brand-wordmark h-10 w-40 object-contain object-left" />
+              </div>
+              <p className="mt-1 text-sm text-[#647168]">Score, strengths, and prioritized improvements. Completed reviews are saved to your history.</p>
+              <button type="button" onClick={rateUploadedResume} disabled={!ratingFile || isRating} className="career-raised-button mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+                {isRating && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
+                {isRating ? pendingReview ? 'Saving your review...' : 'Analyzing your resume...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
+              </button>
+              {ratingError && ratingFile && (
+                <button type="button" disabled={isRating} onClick={pendingReview ? retrySaveReview : rateUploadedResume} className="mt-3 w-full text-sm font-medium text-[#42633A] underline underline-offset-4 disabled:opacity-50">
+                  {pendingReview ? 'Retry saving review' : 'Retry analysis'}
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+        </TiltCard>
+
         <section aria-labelledby="resume-history-heading" className="mb-10">
-          <h2 id="resume-history-heading" className="mb-4 text-lg font-semibold text-slate-900">Resume history</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="resume-history-heading" className="text-lg font-semibold text-slate-900">Resume history</h2>
+              <p className="mt-1 text-sm text-slate-500">Your 3 most recently updated resumes.</p>
+            </div>
+            <button type="button" onClick={() => navigate('/resumes')} className="rounded-full border border-[#1B342B]/15 bg-[#FFFEFA] px-4 py-2 text-sm font-semibold text-[#1B342B] transition hover:border-[#83AE40] hover:bg-[#EDF2E6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40]">
+              View all resumes
+            </button>
+          </div>
         {shreddingResumeId && <p className="sr-only" role="status">Shredding deleted resume.</p>}
         <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {!isLoadingResumes && resumes.map((resume) => {
+          {!isLoadingResumes && recentResumes.map((resume) => {
             const displayName = resume.fullName || [resume.firstName, resume.middleName, resume.lastName].filter(Boolean).join(' ')
             const role = resume.profession || resume.jobTitle || resume.professionalTitle || 'Professional resume'
             const isComplete = Boolean(displayName && resume.summary && (resume.education?.length || resume.experience?.length))
@@ -327,8 +471,8 @@ function Home() {
                           {(displayName || 'R').slice(0, 1).toUpperCase()}
                         </span>
                         <div className="min-w-0 pt-0.5">
-                          <p className="truncate text-[10px] font-bold text-slate-800">{displayName || resume.title || 'Your name'}</p>
-                          <p className="truncate text-[9px] text-slate-400">{role}</p>
+                          <p title={displayName || resume.title || 'Your name'} className="truncate text-[10px] font-bold text-slate-800">{displayName || resume.title || 'Your name'}</p>
+                          <p title={role} className="truncate text-[9px] text-slate-400">{role}</p>
                         </div>
                       </div>
                       <div className="mb-2 h-px bg-slate-100" />
@@ -341,8 +485,8 @@ function Home() {
                       </div>
                     </div>
                   </div>
-                  <h2 className="truncate font-semibold text-slate-800 transition-colors group-hover:text-indigo-700">{resume.title || 'Untitled resume'}</h2>
-                  <p className="mt-1 truncate text-xs text-slate-500">{role}</p>
+                  <h2 title={resume.title || 'Untitled resume'} className="truncate font-semibold text-slate-800 transition-colors group-hover:text-indigo-700">{resume.title || 'Untitled resume'}</h2>
+                  <p title={role} className="mt-1 truncate text-xs text-slate-500">{role}</p>
                 </button>
 
                 <div className="mb-4 flex items-center gap-1.5 text-xs text-slate-400">
@@ -375,82 +519,8 @@ function Home() {
         </div>
         </section>
 
-        <section id="rate-resume" className="scroll-mt-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] md:p-8">
-          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div>
-              <span className="mb-3 inline-flex items-center gap-1.5 rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> AI-powered
-              </span>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900">Rate your resume with AI</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
-                Get a detailed academic CV review against the Academic CV Master Guide, with a score and practical next steps.
-              </p>
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <label htmlFor="rating-resume-file" className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-indigo-500">
-                  <FileUp className="h-4 w-4 text-rose-500" aria-hidden="true" />
-                  {ratingFile?.name || 'Choose PDF or DOCX'}
-                </label>
-                <input id="rating-resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="sr-only" onChange={selectRatingFile} disabled={isRating} />
-                <span className="text-xs text-slate-400">Text-based files up to 8 MB</span>
-              </div>
-              {ratingError && <p role="alert" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
-              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-500">Analyzing your resume against the guide. This may take a moment...</p>}
-            </div>
-
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-5">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-700">Your CV review</span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500">PDF or DOCX</span>
-              </div>
-              <div className="mt-4 flex items-end gap-2">
-                <GraduationCap className="mb-1 h-7 w-7 text-indigo-500" aria-hidden="true" />
-                <span className="text-2xl font-bold text-slate-800">Academic CV</span>
-              </div>
-              <p className="mt-1 text-sm text-slate-500">Score, strengths, and prioritized improvements.</p>
-              <button type="button" onClick={rateUploadedResume} disabled={!ratingFile || isRating} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                {isRating && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
-                {isRating ? 'Analyzing your resume...' : 'Rate my CV'}
-              </button>
-              {ratingError && ratingFile && (
-                <button type="button" disabled={isRating} onClick={rateUploadedResume} className="mt-3 w-full text-sm font-medium text-indigo-600 underline underline-offset-4 disabled:opacity-50">
-                  Retry analysis
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
       </main>
 
-      {isUploadOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setIsUploadOpen(false)
-          }}
-        >
-          <section role="dialog" aria-modal="true" aria-labelledby="upload-resume-heading" className="w-full max-w-lg rounded-xl border bg-background p-6 text-foreground shadow-xl">
-            <h2 id="upload-resume-heading" className="text-xl font-semibold">Upload your resume</h2>
-            <p className="mt-2 text-sm text-muted-foreground">DeepSeek will extract available details and prefill a new resume. Your file is sent to Token Harbor for processing.</p>
-            <label htmlFor="resume-file" className="mt-5 flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:bg-muted/60">
-              <FileUp className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <span className="text-sm font-medium">{uploadedFile?.name || 'Choose a file to upload'}</span>
-              <span className="text-xs text-muted-foreground">PDF, DOC, or DOCX (up to 8 MB)</span>
-            </label>
-            <input
-              id="resume-file"
-              type="file"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="sr-only"
-              onChange={selectResumeFile}
-            />
-            {uploadError && <p role="alert" className="mt-3 text-sm text-red-600">{uploadError}</p>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" disabled={isImporting} onClick={() => { setIsUploadOpen(false); setUploadedFile(null); setUploadError('') }} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">Cancel</button>
-              <button type="button" disabled={!uploadedFile || isImporting} onClick={importResume} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{isImporting ? 'Analyzing resume...' : 'Analyze and import'}</button>
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   )
 }

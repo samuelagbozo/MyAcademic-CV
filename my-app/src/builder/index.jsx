@@ -4,8 +4,10 @@ import { ArrowLeft, Download, Share2 } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import FormSection from './components/FormSection.jsx'
 import ResumePreview from './components/ResumePreview.jsx'
+import NewtonsCradle from '../components/ui/NewtonsCradle.jsx'
 import { apiRequest } from '../lib/api.js'
 import { sanitizeRichText } from './richText.js'
+import { readPreviewMode, savePreviewMode } from './previewMode.js'
 
 function createEmptyResume(id, title) {
   return {
@@ -95,7 +97,7 @@ function Builder() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
-  const [previewStyle, setPreviewStyle] = useState('a4')
+  const [previewMode, setPreviewMode] = useState(readPreviewMode)
   const [activeFormStep, setActiveFormStep] = useState(0)
 
   useEffect(() => {
@@ -119,6 +121,10 @@ function Builder() {
       isCurrent = false
     }
   }, [getToken, id, state?.title])
+
+  useEffect(() => {
+    savePreviewMode(previewMode)
+  }, [previewMode])
 
   useEffect(() => {
     if (isLoading || !state?.printOnLoad) return undefined
@@ -182,56 +188,60 @@ function Builder() {
   }
 
   if (isLoading) {
-    return <main role="status" className="min-h-screen p-8 text-slate-600">Loading your saved resume...</main>
+    return (
+      <main className="career-theme min-h-screen">
+        <NewtonsCradle label="Loading your saved resume" className="min-h-screen" />
+      </main>
+    )
   }
 
   return (
     <main className="career-theme min-h-screen px-4 py-4 text-[#1B342B] sm:px-8 sm:py-6 print:min-h-0 print:p-0">
-      <header className="career-builder-header flex min-h-16 flex-wrap items-center justify-between gap-4 rounded-xl border px-5 py-3 sm:px-8 print:hidden">
-        <button type="button" onClick={() => navigate('/home')} className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900">
+      <header className="career-builder-header career-builder-toolbar flex min-h-16 flex-wrap items-center justify-between gap-4 rounded-xl border px-5 py-3 sm:px-8 print:hidden">
+        <button type="button" onClick={() => navigate('/home')} className="career-form-secondary inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" /> Back to My Resumes
         </button>
         <div className="flex flex-wrap items-center gap-3">
           <span role="status" className="text-sm text-slate-500">{savedMessage}</span>
-          <button type="button" onClick={shareResume} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <button type="button" onClick={shareResume} className="career-form-secondary inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Share2 className="h-4 w-4" /> Share
           </button>
-          <button type="button" onClick={downloadResume} className="inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200">
+          <div role="group" aria-label="Resume preview mode" className="career-preview-toggle inline-flex rounded-lg border border-[#2C4A3E]/15 bg-[#F2EFE6] p-1">
+            <button
+              type="button"
+              data-testid="preview-mode-continuous"
+              aria-label="Continuous scroll"
+              title="Continuous scroll"
+              aria-pressed={previewMode === 'continuous'}
+              onClick={() => setPreviewMode('continuous')}
+              className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] ${previewMode === 'continuous' ? 'bg-[#2C4A3E] text-white shadow-sm' : 'text-[#526158] hover:text-[#1B342B]'}`}
+            >
+              Continuous scroll
+            </button>
+            <button
+              type="button"
+              data-testid="preview-mode-page"
+              aria-label="Page view"
+              title="Page view"
+              aria-pressed={previewMode === 'page'}
+              onClick={() => setPreviewMode('page')}
+              className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] ${previewMode === 'page' ? 'bg-[#2C4A3E] text-white shadow-sm' : 'text-[#526158] hover:text-[#1B342B]'}`}
+            >
+              Page view
+            </button>
+          </div>
+          <button type="button" onClick={downloadResume} className="career-form-primary inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200">
             <Download className="h-4 w-4" /> Download
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-6 p-4 sm:gap-8 sm:p-6 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10 lg:p-8 print:m-0 print:block print:p-0">
+      <div className="grid grid-cols-1 items-start gap-6 p-2 min-[360px]:p-3 sm:gap-8 sm:p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10 lg:p-8 print:m-0 print:block print:p-0">
         <div className="min-w-0">
           <FormSection resume={resume} onChange={updateResume} onSave={saveResume} onStepChange={setActiveFormStep} isSaving={isSaving} />
         </div>
-        <section aria-label="Live resume preview" className="min-w-0 w-full print:static">
-          <div className="career-preview-switch mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 print:hidden">
-            <div>
-              <p className="text-sm font-semibold text-[#1B342B]">Preview style</p>
-              <p className="mt-0.5 text-xs text-[#647168]">Choose how your resume is displayed.</p>
-            </div>
-            <div role="group" aria-label="Resume preview style" className="inline-flex rounded-lg border border-[#2C4A3E]/15 bg-[#F2EFE6] p-1">
-              <button
-                type="button"
-                aria-pressed={previewStyle === 'current'}
-                onClick={() => setPreviewStyle('current')}
-                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] ${previewStyle === 'current' ? 'bg-[#2C4A3E] text-white shadow-sm' : 'text-[#526158] hover:text-[#1B342B]'}`}
-              >
-                Current style
-              </button>
-              <button
-                type="button"
-                aria-pressed={previewStyle === 'a4'}
-                onClick={() => setPreviewStyle('a4')}
-                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] ${previewStyle === 'a4' ? 'bg-[#2C4A3E] text-white shadow-sm' : 'text-[#526158] hover:text-[#1B342B]'}`}
-              >
-                A4 sheets
-              </button>
-            </div>
-          </div>
-          <ResumePreview resume={resume} previewStyle={previewStyle} activeFormStep={activeFormStep} />
+        <section aria-label="Live resume preview" className="career-preview-panel min-w-0 w-full rounded-2xl p-3 sm:p-4 print:static print:border-0 print:bg-transparent print:p-0 print:shadow-none">
+          <ResumePreview resume={resume} previewMode={previewMode} activeFormStep={activeFormStep} />
         </section>
       </div>
     </main>

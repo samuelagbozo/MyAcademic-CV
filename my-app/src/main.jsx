@@ -1,19 +1,22 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import ClerkAuthProvider from './auth/ClerkAuthProvider.jsx'
-import { createBrowserRouter, Outlet } from 'react-router'
+import ClerkRouteLayout from './ClerkRouteLayout.jsx'
+import { createBrowserRouter } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
-import LoginPage from './auth/login'
-import SignUpPage from './auth/signup'
-import Home from './Home'
-import Dashboard from './dashboard'
-import Welcome from './Welcome'
-import Builder from './builder'
-import ResumeRating from './ResumeRating.jsx'
-import ResumeHistory from './ResumeHistory.jsx'
-import AIReviewHistory from './AIReviewHistory.jsx'
+import RouteLoading from './RouteLoading.jsx'
+import {
+  AIReviewHistory,
+  Builder,
+  Dashboard,
+  Home,
+  LoginPage,
+  ResumeHistory,
+  ResumeRating,
+  SignUpPage,
+  Welcome,
+} from './routePages.js'
 
 const router = createBrowserRouter([
   {
@@ -24,57 +27,49 @@ const router = createBrowserRouter([
         children: [
           {
             path: '/',
-            element: <Welcome />,
+            element: <Suspense fallback={<RouteLoading label="Loading ResumeAI" />}><Welcome /></Suspense>,
           },
           {
             path: '/home',
-            element: <Home />,
+            element: <Suspense fallback={<RouteLoading label="Loading your workspace" />}><Home /></Suspense>,
           },
           {
             path: '/resumes',
-            element: <ResumeHistory />,
+            element: <Suspense fallback={<RouteLoading label="Loading your resumes" />}><ResumeHistory /></Suspense>,
           },
           {
             path: '/reviews',
-            element: <AIReviewHistory />,
+            element: <Suspense fallback={<RouteLoading label="Loading your AI reviews" />}><AIReviewHistory /></Suspense>,
           },
           {
             path: '/dashboard',
-            element: <Dashboard />,
+            element: <Suspense fallback={<RouteLoading label="Loading your dashboard" />}><Dashboard /></Suspense>,
           },
           {
             path: '/builder/:id',
-            element: <Builder />,
+            element: <Suspense fallback={<RouteLoading label="Loading your resume builder" />}><Builder /></Suspense>,
           },
           {
             path: '/resume-rating',
-            element: <ResumeRating />,
+            element: <Suspense fallback={<RouteLoading label="Loading AI review" />}><ResumeRating /></Suspense>,
           },
           {
             path: '/resume-rating/:reviewId',
-            element: <ResumeRating />,
+            element: <Suspense fallback={<RouteLoading label="Loading saved AI review" />}><ResumeRating /></Suspense>,
           },
         ],
       },
       {
         path: '/auth/sign-in/*',
-        element: <LoginPage />,
+        element: <Suspense fallback={<RouteLoading label="Loading sign in" />}><LoginPage /></Suspense>,
       },
       {
         path: '/auth/sign-up/*',
-        element: <SignUpPage />,
+        element: <Suspense fallback={<RouteLoading label="Loading sign up" />}><SignUpPage /></Suspense>,
       },
     ],
   },
 ])
-
-function ClerkRouteLayout() {
-  return (
-    <ClerkAuthProvider>
-      <Outlet />
-    </ClerkAuthProvider>
-  )
-}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

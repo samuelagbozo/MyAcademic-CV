@@ -25,11 +25,35 @@ const PAGINATABLE_SECTION_DATA = {
   references: 'references',
 }
 
-function ResumePreview({ resume, previewStyle = 'a4', activeFormStep = 0 }) {
+function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
   const measurementRef = useRef(null)
   const [pages, setPages] = useState([])
   const [manualPage, setManualPage] = useState(null)
-  const hasContent = Boolean(resume.firstName || resume.middleName || resume.lastName || resume.fullName || resume.jobTitle || resume.summary || resume.experience.length || resume.leadershipExperience?.length || resume.education.length || resume.projects.length || resume.skills.length || resume.certifications?.length || resume.achievements.length || resume.customSections?.length || resume.references?.length)
+  const hasContent = Boolean(
+    resume.firstName ||
+    resume.middleName ||
+    resume.lastName ||
+    resume.fullName ||
+    resume.jobTitle ||
+    resume.profession ||
+    resume.address ||
+    resume.location ||
+    resume.phone ||
+    resume.email ||
+    resume.linkedin ||
+    resume.website ||
+    resume.photo ||
+    resume.summary ||
+    resume.experience.length ||
+    resume.leadershipExperience?.length ||
+    resume.education.length ||
+    resume.projects.length ||
+    resume.skills.length ||
+    resume.certifications?.length ||
+    resume.achievements.length ||
+    resume.customSections?.length ||
+    resume.references?.length,
+  )
   const sections = useMemo(() => {
     if (!hasContent) return []
 
@@ -49,7 +73,7 @@ function ResumePreview({ resume, previewStyle = 'a4', activeFormStep = 0 }) {
   }, [hasContent, resume])
 
   useLayoutEffect(() => {
-    if (previewStyle !== 'a4' || !measurementRef.current) return undefined
+    if (previewMode !== 'page' || !measurementRef.current) return undefined
 
     const measureAndPaginate = () => {
       const container = measurementRef.current
@@ -158,7 +182,7 @@ function ResumePreview({ resume, previewStyle = 'a4', activeFormStep = 0 }) {
     observer.observe(measurementRef.current)
     Array.from(measurementRef.current.children).forEach((child) => observer.observe(child))
     return () => observer.disconnect()
-  }, [previewStyle, sections])
+  }, [previewMode, sections])
 
   const activeStepKey = FORM_STEP_SECTION_KEYS[activeFormStep]
   let automaticPageIndex = pages.findIndex((page) => page.some((section) => section.key === activeStepKey))
@@ -199,9 +223,9 @@ function ResumePreview({ resume, previewStyle = 'a4', activeFormStep = 0 }) {
     }
   }
 
-  if (previewStyle !== 'a4') {
+  if (previewMode === 'continuous') {
     return (
-      <div id="resume-preview" className="resume-current-preview min-h-[700px] min-w-0 max-w-full bg-white px-8 py-10 text-slate-900 shadow-lg sm:px-12 lg:px-14 print:min-h-0 print:p-14 print:shadow-none" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
+      <div id="resume-preview" className="resume-continuous-preview min-h-[480px] min-w-0 max-w-full break-words bg-white px-4 py-6 text-slate-900 shadow-lg sm:min-h-[700px] sm:px-12 sm:py-10 lg:px-14 print:min-h-0 print:p-14 print:shadow-none" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
         {!hasContent
           ? <p className="flex min-h-[560px] items-center justify-center text-xl text-slate-700 print:min-h-0">Resume Preview</p>
           : sections}
@@ -210,7 +234,7 @@ function ResumePreview({ resume, previewStyle = 'a4', activeFormStep = 0 }) {
   }
 
   return (
-    <div id="resume-preview" className="resume-a4-preview" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
+    <div id="resume-preview" className="resume-page-preview" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
       <div ref={measurementRef} className="resume-a4-measurement" aria-hidden="true" inert>
         {sections.map((section) => <div className="resume-a4-section" key={section.key}>{section}</div>)}
       </div>

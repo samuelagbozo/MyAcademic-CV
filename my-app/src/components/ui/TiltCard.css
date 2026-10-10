@@ -1,0 +1,22 @@
+.resume-tilt-card {
+  position: relative;
+  z-index: 0;
+  transform-style: preserve-3d;
+  transition: filter 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .resume-tilt-card:hover {
+    filter: drop-shadow(0 16px 20px rgba(27, 52, 43, 0.2));
+  }
+
+  .dark .resume-tilt-card:hover {
+    filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.38));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resume-tilt-card {
+    transition: none;
+  }
+}

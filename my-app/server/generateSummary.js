@@ -6,8 +6,8 @@ import { PDFParse } from 'pdf-parse'
 import WordExtractor from 'word-extractor'
 
 const MAX_INPUT_LENGTH = 8000
-const MAX_RESUME_FILE_BYTES = 8 * 1024 * 1024
-const MAX_REQUEST_BODY_BYTES = 12 * 1024 * 1024
+const MAX_RESUME_FILE_BYTES = 10 * 1024 * 1024
+const MAX_REQUEST_BODY_BYTES = 14 * 1024 * 1024
 const MIN_RESUME_TEXT_LENGTH = 150
 const TOKENHARBOR_CHAT_COMPLETIONS_URL = 'https://tokenharbor.ai/v1/chat/completions'
 const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4.1-flash:free'
@@ -142,7 +142,7 @@ async function extractUploadedText(body) {
   }
   const fileBuffer = Buffer.from(fileBase64, 'base64')
   if (!fileBuffer.length || fileBuffer.length > MAX_RESUME_FILE_BYTES) {
-    const error = new Error('Choose a resume file smaller than 8 MB.')
+    const error = new Error('Choose a resume file smaller than 10 MB.')
     error.statusCode = fileBuffer.length ? 413 : 400
     throw error
   }
@@ -331,7 +331,7 @@ async function extractResume(body) {
   }
   const fileBuffer = Buffer.from(fileBase64, 'base64')
   if (!fileBuffer.length || fileBuffer.length > MAX_RESUME_FILE_BYTES) {
-    const error = new Error('Choose a resume file smaller than 8 MB.')
+    const error = new Error('Choose a resume file smaller than 10 MB.')
     error.statusCode = fileBuffer.length ? 413 : 400
     throw error
   }

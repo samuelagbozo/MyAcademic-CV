@@ -9,7 +9,15 @@ export async function apiRequest(path, { token, ...options } = {}) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const response = await fetch(`${API_BASE_URL}/api${path}`, { ...options, headers })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/api${path}`, { ...options, headers })
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(`Could not reach the resume database API at ${API_BASE_URL}. Check that the Server app is running and that its CLIENT_URL allows this site.`, { cause: error })
+    }
+    throw error
+  }
   if (response.status === 204) return null
 
   const result = await response.json().catch(() => null)

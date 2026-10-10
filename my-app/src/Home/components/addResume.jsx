@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { SquarePlus } from 'lucide-react'
+import SpotlightCard from '../../components/ui/SpotlightCard.jsx'
 
 const fieldClassName = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
@@ -28,20 +29,23 @@ function AddResume({ onCreate }) {
 
   return (
     <>
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Add a resume"
-        onClick={() => setDialog('title')}
-        onKeyDown={handleCardKeyDown}
-        className="group flex min-h-[300px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-white p-6 text-center transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-      >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-100 bg-white text-indigo-600 shadow-sm transition-transform group-hover:scale-105">
-          <SquarePlus className="add-icon h-7 w-7" aria-hidden="true" />
+      <SpotlightCard className="group h-full min-h-[280px] w-full min-w-0 rounded-3xl border border-[#1B342B]/10 bg-[#FFFEFA] shadow-[0_8px_30px_-25px_rgba(27,52,43,0.5)] transition-[border-color,box-shadow] hover:border-[#83AE40]/40 hover:shadow-[0_16px_36px_-24px_rgba(27,52,43,0.32)]">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Add a resume"
+          onClick={() => setDialog('title')}
+          onKeyDown={handleCardKeyDown}
+          className="flex h-full min-h-[280px] min-w-0 cursor-pointer flex-col items-center gap-4 break-words p-4 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#83AE40] sm:p-6"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#1B342B]/10 bg-white text-[#2C4A3E] shadow-sm transition-transform group-hover:scale-105">
+            <SquarePlus className="add-icon h-7 w-7" aria-hidden="true" />
+          </div>
+          <span className="break-words font-semibold text-[#1B342B]">Create a new resume</span>
+          <span className="max-w-60 break-words text-sm leading-relaxed text-[#71806F]">Start from scratch and build a resume that stands out.</span>
+          <span aria-hidden="true" className="mt-auto rounded-full bg-[#C5F26E] px-5 py-2.5 text-sm font-semibold text-[#1B342B] transition-colors group-hover:bg-[#b9e85e]">Get started</span>
         </div>
-        <span className="font-semibold text-slate-800">Create a new resume</span>
-        <span className="max-w-60 text-sm text-slate-400">Start from scratch and build a resume that stands out.</span>
-      </div>
+      </SpotlightCard>
 
       {dialog && (
         <div

@@ -1,15 +1,16 @@
 import { SignIn } from '@clerk/react-router'
+import AuthPageLayout from '../AuthPageLayout.jsx'
 
 function LoginPage() {
   return (
-    <div className="flex justify-center py-8">
+    <AuthPageLayout mode="sign-in">
       <SignIn
         routing="path"
         path="/auth/sign-in"
         signUpUrl="/auth/sign-up"
         forceRedirectUrl="/home"
       />
-    </div>
+    </AuthPageLayout>
   )
 }
 

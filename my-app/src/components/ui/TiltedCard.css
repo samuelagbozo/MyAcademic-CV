@@ -1,0 +1,50 @@
+.tilted-review-card {
+  position: relative;
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --card-hover-transform: translateY(0) scale(1);
+  transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) var(--card-hover-transform);
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
+  transition: transform 180ms ease-out, box-shadow 180ms ease;
+}
+
+.tilted-review-card:hover {
+  box-shadow: 0 24px 48px -26px rgba(27, 52, 43, 0.38);
+}
+
+.tilted-review-card.rating-card-enter {
+  animation: none;
+}
+
+.tilted-review-card__caption {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  max-width: min(75%, 18rem);
+  overflow: hidden;
+  border: 1px solid rgba(27, 52, 43, 0.1);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  background: #c5f26e;
+  color: #1b342b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .tilted-review-card__caption {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilted-review-card {
+    transition: box-shadow 180ms ease;
+  }
+}

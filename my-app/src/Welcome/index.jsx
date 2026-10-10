@@ -6,9 +6,9 @@ import {
   BriefcaseBusiness,
   ChartNoAxesCombined,
   Check,
-  FileText,
   ShieldCheck,
   Sparkles,
+  FileText,
   UserRound,
 } from 'lucide-react'
 import Header from '../components/Header.jsx'
@@ -44,11 +44,11 @@ function Welcome() {
   const shouldReduceMotion = useReducedMotion()
 
   return (
-    <div className="welcome-page min-h-screen overflow-hidden text-[#1B342B]">
+    <div className="welcome-page min-h-screen overflow-x-clip text-[#1B342B]">
       <Header action="get-started" />
 
       <main>
-        <section className="relative px-5 pb-12 pt-16 sm:px-8 sm:pt-20 lg:pb-16 lg:pt-24">
+        <section className="relative z-0 min-w-0 px-4 pb-12 pt-16 sm:px-8 sm:pt-20 lg:pb-16 lg:pt-24">
           <div className="pointer-events-none absolute left-1/2 top-12 -z-0 h-72 w-72 -translate-x-1/2 rounded-full bg-[#C5F26E]/20 blur-3xl" />
           <div className="relative mx-auto max-w-6xl">
             <motion.p
@@ -60,13 +60,13 @@ function Welcome() {
               Welcome
             </motion.p>
           </div>
-          <div className="relative mx-auto max-w-5xl text-center">
+          <div className="relative mx-auto min-w-0 max-w-5xl text-center">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#2C4A3E]/20 bg-white/70 px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#2C4A3E] sm:text-xs">
               <span className="h-2 w-2 rounded-full bg-[#83AE40]" />
               Your next chapter, engineered
             </div>
-            <h1 aria-label="Make your experience impossible to overlook" className="mx-auto mt-7 max-w-4xl text-5xl font-bold leading-[1.03] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
-              Make your experience <span className="text-[#567B42]"><FlipText text="impossible to overlook" /></span>
+            <h1 aria-label="Make your experience impossible to overlook" className="mx-auto mt-7 min-w-0 max-w-4xl break-words text-balance text-[clamp(2rem,9vw,3.5rem)] font-bold leading-[1.12] tracking-[-0.045em] sm:text-6xl lg:text-7xl lg:leading-[1.03] lg:tracking-[-0.055em]">
+              Make your experience <span className="text-[#567B42]"><span className="lg:hidden">impossible to overlook</span><span className="hidden lg:inline"><FlipText text="impossible to overlook" /></span></span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#526158] sm:text-lg sm:leading-8">
               Build a sharper resume, get thoughtful AI feedback, and keep your career materials ready for what comes next.
@@ -86,28 +86,47 @@ function Welcome() {
           </div>
 
           <FlipCard
-            className="mt-3"
+            className="welcome-builder-preview mt-3"
             ariaLabel="Resume builder and resume preview"
             back={
               <div className="resume-review-back">
                 <div className="resume-review-back__topline">
-                  <span className="resume-review-back__eyebrow">SAMPLE AI REVIEW · ALEX MORGAN RIVERS</span>
+                  <div className="resume-review-back__title">
+                    <span className="resume-review-back__eyebrow">HR MANAGER’S ACADEMIC CV REVIEW</span>
+                    <span className="resume-review-back__filename">Alex Morgan Rivers · Resume</span>
+                  </div>
                   <span className="resume-review-back__badge"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> REVIEW READY</span>
                 </div>
                 <div className="resume-review-back__content">
                   <div className="resume-review-back__score">
-                    <span className="resume-review-back__score-label">Resume strength</span>
-                    <span className="resume-review-back__score-value">86<span>/100</span></span>
-                    <div className="resume-review-back__progress"><span /></div>
+                    <div className="resume-review-back__score-header">
+                      <div>
+                        <span className="resume-review-back__score-label">Resume strength</span>
+                        <span className="resume-review-back__score-value">86<span>/100</span></span>
+                      </div>
+                      <span className="resume-review-back__score-percent">86%</span>
+                    </div>
+                    <div className="resume-review-back__progress" role="progressbar" aria-label="Sample resume strength" aria-valuemin={0} aria-valuemax={100} aria-valuenow={86}><span /></div>
                     <p>Well structured, focused, and easy to scan.</p>
                   </div>
                   <div className="resume-review-back__feedback">
-                    <h2>Clear next steps</h2>
-                    <p>Small, practical improvements to help your experience stand out.</p>
+                    <div className="resume-review-back__breakdown-heading">
+                      <div>
+                        <h2>Score breakdown</h2>
+                        <p>Clear feedback to help your experience stand out.</p>
+                      </div>
+                      <span className="resume-review-back__category-score">8 / 10</span>
+                    </div>
+                    <div className="resume-review-back__category">
+                      <div className="resume-review-back__category-title">
+                        <span>Experience &amp; impact</span>
+                        <span>Strong evidence</span>
+                      </div>
+                      <div className="resume-review-back__category-meter"><span /></div>
+                    </div>
                     <ul>
                       <li><Check className="h-4 w-4" aria-hidden="true" /> Add measurable outcomes to project descriptions.</li>
                       <li><Check className="h-4 w-4" aria-hidden="true" /> Bring key design skills closer to the top.</li>
-                      <li><Check className="h-4 w-4" aria-hidden="true" /> Keep the concise profile and strong section order.</li>
                     </ul>
                   </div>
                 </div>
@@ -118,29 +137,28 @@ function Welcome() {
               </div>
             }
           >
-          <div id="product" className="overflow-hidden rounded-3xl border border-[#1B342B]/10 bg-white shadow-[0_24px_80px_-42px_rgba(27,52,43,0.5)]">
-            <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
-              <div className="border-b border-[#1B342B]/10 bg-white p-5 sm:p-7 lg:border-b-0 lg:border-r lg:p-8">
+          <div id="product" className="welcome-builder-frame">
+            <div className="welcome-builder-grid">
+              <div className="welcome-builder-form">
                 <div className="mb-5">
                   <div className="mb-2 flex items-center justify-between gap-3 text-xs text-[#526158]">
                     <span className="font-medium">Step 1 of 11: Personal Information</span>
                     <span className="font-mono">9%</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[#E5E7E1]"><div className="h-full w-[9%] rounded-full bg-emerald-500" /></div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-[#1B342B]/15 px-3 py-2 text-xs font-medium text-[#2C4A3E]"><FileText className="h-3.5 w-3.5" aria-hidden="true" /> Theme</span>
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[#2C4A3E]">Next <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
+                  <div className="welcome-builder-progress"><span /></div>
+                  <div className="mt-4 flex justify-end">
+                    <span className="welcome-builder-secondary">Next <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
                   </div>
                 </div>
 
-                <div className="rounded-xl border-t-4 border-[#1B342B] bg-white p-4 shadow-[0_8px_28px_-22px_rgba(27,52,43,0.45)] sm:p-5">
-                  <h2 className="text-lg font-bold text-slate-900">Personal Detail</h2>
-                  <p className="text-sm text-slate-600">Get started with the basic information</p>
+                <div className="welcome-builder-section">
+                  <h2 className="text-lg font-bold text-[#1B342B]">Personal Detail</h2>
+                  <p className="text-sm text-[#647168]">Get started with the basic information</p>
                   <div className="mt-4 flex items-center gap-3">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 text-slate-500"><UserRound className="h-5 w-5" aria-hidden="true" /></span>
-                    <span className="text-sm text-slate-700">Upload user image</span>
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#1B342B]/20 text-[#526158]"><UserRound className="h-5 w-5" aria-hidden="true" /></span>
+                    <span className="text-sm text-[#526158]">Upload user image</span>
                   </div>
-                  <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
+                  <div className="mt-5 grid grid-cols-1 gap-x-3 gap-y-3 min-[360px]:grid-cols-2 sm:grid-cols-3">
                     {[
                       ['First Name', 'ALEX'],
                       ['Middle Name', 'MORGAN'],
@@ -153,17 +171,31 @@ function Welcome() {
                       ['Personal Website Link', 'alexrivers.design'],
                     ].map(([label, value], index) => (
                       <div key={label} className={`${index === 3 || index === 4 || index > 6 ? 'col-span-2' : ''} min-w-0`}>
-                        <p className="mb-1.5 truncate text-xs text-slate-600">{label}</p>
-                        <div className="truncate rounded-md border border-slate-300 bg-white px-2.5 py-2.5 text-xs text-slate-700 sm:px-3">{value}</div>
+                        <p className="mb-1.5 truncate text-xs text-[#526158]">{label}</p>
+                        <div className="welcome-builder-input">{value}</div>
                       </div>
                     ))}
                   </div>
                 </div>
+                <div className="mt-5 flex justify-end border-t border-[#1B342B]/10 pt-4">
+                  <span className="welcome-builder-primary">Save Changes</span>
+                </div>
               </div>
 
-              <div className="bg-[#F7F7F4] p-4 sm:p-7 lg:p-8">
-                <p className="mx-auto mb-2 max-w-xl font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#71806F]">Fictional sample profile · Alex Morgan Rivers</p>
-                <div className="mx-auto max-w-xl bg-white px-6 py-7 text-slate-900 shadow-[0_10px_35px_-20px_rgba(15,23,42,0.35)] sm:px-9 sm:py-9" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+              <div className="welcome-builder-preview">
+                <div className="welcome-builder-preview-switch">
+                  <div>
+                    <p className="text-sm font-semibold text-[#1B342B]">Preview mode</p>
+                    <p className="mt-0.5 text-[10px] text-[#647168]">Choose continuous scrolling or a page-by-page view.</p>
+                  </div>
+                  <div className="welcome-builder-preview-toggle">
+                    <span>Continuous scroll</span>
+                    <span aria-current="true">Page view</span>
+                  </div>
+                </div>
+                <div className="welcome-builder-paper">
+                  <p className="mx-auto mb-2 max-w-xl font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#71806F]">Fictional sample profile · Alex Morgan Rivers</p>
+                  <div className="mx-auto max-w-xl bg-white px-6 py-7 text-slate-900 shadow-[0_10px_35px_-20px_rgba(15,23,42,0.35)] sm:px-9 sm:py-9" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
                   <header className="border-b border-slate-300 pb-4 text-center">
                     <h2 className="text-xl font-bold tracking-wide sm:text-2xl">ALEX MORGAN RIVERS</h2>
                     <p className="mt-1 text-[10px] font-medium leading-relaxed sm:text-xs">Product Designer</p>
@@ -180,7 +212,7 @@ function Welcome() {
                     <h3 className="mb-1 border-y-2 border-black py-1 uppercase">Education</h3>
                     <div className="my-2">
                       <h4 className="font-bold">North Coast School of Design, Portland, OR</h4>
-                      <p className="flex justify-between gap-2"><span>Bachelor of Fine Arts in Communication Design</span><span className="shrink-0">2020 — 2024</span></p>
+                      <p className="flex flex-col justify-between gap-1 min-[400px]:flex-row min-[400px]:gap-2"><span className="min-w-0 break-words">Bachelor of Fine Arts in Communication Design</span><span className="shrink-0">2020 — 2024</span></p>
                     </div>
                   </section>
 
@@ -195,32 +227,33 @@ function Welcome() {
                       <p>Created a searchable directory that connects residents with independent restaurants and community food events.</p>
                     </div>
                   </section>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           </FlipCard>
 
-          <div className="mt-3 overflow-hidden rounded-3xl bg-[#1B342B]">
-              <div className="mx-auto max-w-5xl p-6 text-white sm:p-8 lg:p-10">
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#C5F26E]">A BETTER CAREER TOOLKIT</p>
-              <h2 className="mt-3 max-w-md text-3xl font-bold leading-tight tracking-[-0.04em] sm:text-4xl">Good work deserves a great introduction.</h2>
-              <p className="mt-4 max-w-md text-sm leading-6 text-white/65">Bring your experience into focus with a workspace designed to help you create, refine, and keep moving.</p>
+          <div className="welcome-toolkit mt-4">
+              <div className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#567B42]">A BETTER CAREER TOOLKIT</p>
+              <h2 className="mt-3 max-w-md text-3xl font-bold leading-tight tracking-[-0.04em] text-[#1B342B] sm:text-4xl">Good work deserves a great introduction.</h2>
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-[#647168]">Bring your experience into focus with a workspace designed to help you create, refine, and keep moving.</p>
 
-              <div id="how-it-works" className="mt-8 space-y-5">
+              <div id="how-it-works" className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {highlights.map(({ title, description, icon: Icon }, index) => (
-                  <article key={title} id={index === 1 ? 'ai-review' : undefined} className="flex gap-3.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#C5F26E] text-[#1B342B]">
+                  <article key={title} id={index === 1 ? 'ai-review' : undefined} className="welcome-toolkit-item flex gap-3.5">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#1B342B]/20 bg-[#C5F26E] text-[#1B342B] shadow-[2px_2px_0_#2C4A3E]">
                       <Icon className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <div>
-                      <h3 className="text-sm font-semibold">{title}</h3>
-                      <p className="mt-1 text-xs leading-5 text-white/60">{description}</p>
+                      <h3 className="text-sm font-semibold text-[#1B342B]">{title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-[#647168]">{description}</p>
                     </div>
                   </article>
                 ))}
               </div>
-              <Link to="/auth/sign-up" className="mt-8 inline-flex w-fit items-center gap-2 rounded-full bg-[#C5F26E] px-5 py-2.5 text-sm font-semibold text-[#1B342B] transition hover:bg-[#b9e85e]">
+              <Link to="/auth/sign-up" className="welcome-toolkit-action mt-8 inline-flex w-fit items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold text-[#1B342B]">
                 Start building <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               </div>
@@ -228,7 +261,7 @@ function Welcome() {
         </section>
       </main>
 
-      <footer className="border-t border-[#1B342B]/10 px-6 py-6 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-[#71806F]">
+      <footer className="border-t border-[#1B342B]/10 px-4 py-6 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-[#71806F] sm:px-6">
         ResumeAI · Built for your next move
       </footer>
     </div>

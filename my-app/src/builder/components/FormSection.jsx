@@ -11,7 +11,6 @@ import CertificationsForm from './forms/CertificationsForm.jsx'
 import AchievementsForm from './forms/AchievementsForm.jsx'
 import CustomSectionsForm from './forms/CustomSectionsForm.jsx'
 import ReferencesForm from './forms/ReferencesForm.jsx'
-import ThemeColor from './ThemeColor.jsx'
 
 const STEPS = ['Personal Information', 'Professional Summary', 'Education', 'Professional Experience', 'Projects', 'Skills', 'Certifications', 'Leadership Experience', 'Achievements', 'Custom Sections', 'References']
 
@@ -97,22 +96,21 @@ function FormSection({ resume, onChange, onSave, onStepChange, isSaving = false 
   }
 
   return (
-    <form ref={formRef} onSubmit={submit} className="relative overflow-hidden bg-white print:hidden">
+    <form ref={formRef} onSubmit={submit} className="career-builder-form relative overflow-hidden print:hidden">
       <div className="px-1 pb-2 pt-2 sm:px-2">
         <div className="mb-5" aria-label="Resume builder progress">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-medium text-slate-700">Step {step + 1} of {STEPS.length}: {STEPS[step]}</span>
-            <span className="tabular-nums text-slate-500">{Math.round(progress)}%</span>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+            <span className="min-w-0 flex-1 break-words font-medium text-slate-700">Step {step + 1} of {STEPS.length}: {STEPS[step]}</span>
+            <span className="shrink-0 tabular-nums text-slate-500">{Math.round(progress)}%</span>
           </div>
           <div role="progressbar" aria-label="Resume form progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)} aria-valuetext={`${Math.round(progress)}% complete`} className="h-2 overflow-hidden rounded-full bg-slate-200">
             <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-300 ease-out" style={{ width: `${progress}%` }} />
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 px-1 pb-4">
-          <ThemeColor value={resume.themeColor} onChange={(themeColor) => onChange((current) => ({ ...current, themeColor }))} />
+        <div className="flex items-center justify-end gap-3 px-1 pb-4">
           <div className="flex items-center gap-1 text-sm font-medium">
-            {step > 0 && <button type="button" onClick={() => setStep((current) => current - 1)} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100"><ChevronLeft className="h-4 w-4" /> Previous</button>}
-            <button type="button" onClick={goNext} disabled={step === STEPS.length - 1} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400">Next <ChevronRight className="h-4 w-4" /></button>
+            {step > 0 && <button type="button" onClick={() => setStep((current) => current - 1)} className="career-form-secondary inline-flex min-h-11 items-center gap-1 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 lg:min-h-0"><ChevronLeft className="h-4 w-4" /> Previous</button>}
+            <button type="button" onClick={goNext} disabled={step === STEPS.length - 1} className="career-form-secondary inline-flex min-h-11 items-center gap-1 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 lg:min-h-0">Next <ChevronRight className="h-4 w-4" /></button>
           </div>
         </div>
         <div className="min-h-[370px] pt-2">
@@ -128,10 +126,10 @@ function FormSection({ resume, onChange, onSave, onStepChange, isSaving = false 
           {step === 9 && <CustomSectionsForm sections={resume.customSections} onChange={(customSections) => onChange((current) => ({ ...current, customSections }))} />}
           {step === 10 && <ReferencesForm entries={resume.references} themeColor={resume.themeColor} onAdd={() => addEntry('references')} onRemove={(index) => removeEntry('references', index)} onChange={(index, field, value) => updateEntry('references', index, field, value)} />}
         </div>
-        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-          <button type="button" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:invisible">Previous</button>
-          <button type="submit" disabled={isSaving} className="rounded-lg border border-emerald-300 bg-emerald-100 px-6 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60">{isSaving ? 'Saving...' : 'Save Changes'}</button>
-          <button type="button" onClick={goNext} disabled={step === STEPS.length - 1} className="rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:invisible">Next</button>
+        <div className="mt-6 grid grid-cols-2 items-center gap-2 border-t border-slate-100 pt-5 sm:flex sm:justify-between lg:gap-0">
+          <button type="button" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0} className="career-form-secondary min-h-11 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:invisible sm:px-4 sm:text-sm lg:min-h-0">Previous</button>
+          <button type="submit" disabled={isSaving} className="career-form-primary min-h-11 rounded-lg border border-emerald-300 bg-emerald-100 px-3 py-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60 sm:px-6 sm:text-sm lg:min-h-0">{isSaving ? 'Saving...' : 'Save Changes'}</button>
+          <button type="button" onClick={goNext} disabled={step === STEPS.length - 1} className="career-form-secondary col-span-2 min-h-11 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 disabled:invisible sm:col-span-1 sm:px-4 sm:text-sm lg:min-h-0">Next</button>
         </div>
       </div>
     </form>
