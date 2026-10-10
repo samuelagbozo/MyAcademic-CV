@@ -177,13 +177,10 @@ function RatingDashboard() {
         reader.onerror = () => reject(new Error('Could not read the resume file.'))
         reader.readAsDataURL(resumeFile)
       })
-      const response = await fetch('/api/extract-resume', {
+      const result = await apiRequest('/extract-resume', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileBase64: fileData, name: resumeFile.name, mimeType: resumeFile.type }),
       })
-      const result = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(result?.error || 'Could not prepare the resume for editing.')
       if (!result?.resume || typeof result.resume !== 'object') throw new Error('AI did not return resume details.')
 
       const id = crypto.randomUUID()

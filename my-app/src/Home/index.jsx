@@ -153,9 +153,8 @@ function Home() {
         reader.onerror = () => reject(new Error('Could not read the selected file.'))
           reader.readAsDataURL(file)
       })
-      const response = await fetch('/api/extract-resume', {
+      const result = await apiRequest('/extract-resume', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileBase64: fileData,
           name: file.name,
@@ -164,8 +163,6 @@ function Home() {
             : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         }),
       })
-      const result = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(result?.error || 'Could not extract this resume.')
       if (!result?.resume || typeof result.resume !== 'object') throw new Error('AI did not return resume details.')
 
       const title = file.name.replace(/\.[^.]+$/, '').trim() || 'Imported Resume'
@@ -235,13 +232,10 @@ function Home() {
         reader.onerror = () => reject(new Error('Could not read the selected file.'))
         reader.readAsDataURL(ratingFile)
       })
-      const response = await fetch('/api/rate-resume', {
+      const result = await apiRequest('/rate-resume', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileBase64: fileData, name: ratingFile.name, mimeType: ratingFile.type }),
       })
-      const result = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(result?.error || 'Could not analyze this resume. Please retry.')
       if (!result?.rating || typeof result.rating !== 'object') throw new Error('The AI did not return a valid rating. Please retry.')
       const review = { id: crypto.randomUUID(), fileName: ratingFile.name, rating: result.rating }
       generatedReview = review

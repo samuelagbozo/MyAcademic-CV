@@ -4,6 +4,7 @@ import { clerkMiddleware } from '@clerk/express'
 import 'dotenv/config'
 import { connectToMongoDB } from './configs/db.js'
 import resumeRoutes from './routes/resumes.js'
+import { createAiApi } from './generateSummary.js'
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -23,6 +24,7 @@ const allowedOrigins = [
 ].filter(Boolean)
 
 app.use(cors({
+  allowedHeaders: ['Content-Type', 'Authorization'],
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true)
@@ -31,6 +33,7 @@ app.use(cors({
     callback(new Error('Origin is not allowed by CORS.'))
   },
 }))
+app.use(createAiApi())
 app.use(express.json({ limit: '2mb' }))
 app.use(clerkMiddleware())
 
