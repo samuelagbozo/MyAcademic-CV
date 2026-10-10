@@ -24,7 +24,7 @@ function aiApiPlugin() {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), aiApiPlugin()],
-  base: process.env.VITE_BASE_PATH || '/MyAcademic-CV',
+  base: '/',
 
   resolve: {
     alias: {
