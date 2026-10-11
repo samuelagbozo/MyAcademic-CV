@@ -137,7 +137,7 @@ function RatingDashboard() {
     )
   }
 
-  if (savedReviewError) {
+  if (savedReviewError && !rating) {
     return (
       <div className="career-theme min-h-screen text-[#1B342B]">
         <Header action="dashboard" />
@@ -228,6 +228,11 @@ function RatingDashboard() {
     <div className="career-theme min-h-screen text-[#1B342B]">
       <Header action="dashboard" />
       <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 md:px-10">
+        {savedReviewError && rating && (
+          <p role="status" className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Your CV rating is ready, but it could not be saved to AI review history: {savedReviewError}
+          </p>
+        )}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Link to="/reviews" className="inline-flex items-center gap-2 text-sm font-medium text-[#526158] transition-colors hover:text-[#1B342B]">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" /> AI review history

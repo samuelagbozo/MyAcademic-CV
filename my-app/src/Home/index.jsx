@@ -288,6 +288,7 @@ function Home() {
       return
     }
     if (!isAuthLoaded || !isSignedIn) {
+      setRatingError('Sign in to rate your CV.')
       navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
       return
     }
@@ -303,6 +304,7 @@ function Home() {
     try {
       const token = await getToken()
       if (!token) {
+        setRatingError('Your session expired. Sign in again to rate your CV.')
         navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
         return
       }
@@ -314,8 +316,9 @@ function Home() {
       if (!result?.rating || typeof result.rating !== 'object') throw new Error('The AI did not return a valid rating. Please retry.')
       const review = { id: crypto.randomUUID(), fileName: ratingFile.name, rating: result.rating }
       generatedReview = review
-      setPendingReview(review)
-      await saveReviewAndOpen(review, ratingFile, token, controller.signal)
+      navigate(`/resume-rating/${encodeURIComponent(review.id)}`, {
+        state: { rating: review.rating, fileName: review.fileName, resumeFile: ratingFile },
+      })
     } catch (error) {
       if (import.meta.env.DEV) console.error('CV review request failed:', error)
       if (error.status === 401) {
@@ -331,7 +334,7 @@ function Home() {
       } else if (generatedReview || pendingReview) {
         setRatingError(`Your review is ready, but it could not be saved: ${error.message || 'Please try again.'}`)
       } else if (error.cause instanceof TypeError || error instanceof TypeError) {
-        setRatingError('Could not reach the review server. Check your connection and try again.')
+        setRatingError('Could not reach the server, try again in a minute.')
       } else if (error.status === 429) {
         setRatingError('The AI service is busy. Please wait a moment and try again.')
       } else if (error.status >= 500) {
@@ -482,7 +485,7 @@ function Home() {
                 <span className="text-xs text-[#71806F]">Text-based files up to 10 MB</span>
               </div>
               {ratingError && <p role="alert" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
-              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Reviewing your CV...</p>}
+              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your CV... The first request can take up to a minute.</p>}
               {isWakingRatingServer && <p role="status" aria-live="polite" className="mt-2 text-sm text-[#647168]">Waking up the server, this can take a moment on the first try.</p>}
             </div>
 
@@ -497,7 +500,7 @@ function Home() {
               <p className="mt-1 text-sm text-[#647168]">Score, strengths, and prioritized improvements. Completed reviews are saved to your history.</p>
               <button type="button" onClick={rateUploadedResume} disabled={isRating} className="career-raised-button mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50">
                 {isRating && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
-                {isRating ? pendingReview ? 'Saving your review...' : 'Reviewing your CV...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
+                {isRating ? pendingReview ? 'Saving your review...' : 'Analyzing your CV...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
               </button>
               {ratingError && (
                 <button type="button" disabled={isRating} onClick={pendingReview ? retrySaveReview : rateUploadedResume} className="mt-3 w-full rounded-md text-sm font-medium text-[#42633A] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] disabled:opacity-50">
