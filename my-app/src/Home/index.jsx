@@ -277,7 +277,14 @@ function Home() {
   }
 
   async function rateUploadedResume() {
-    if (ratingLockRef.current || isRating) return
+    if (isRating) {
+      setRatingError('A CV review is already in progress. Please wait for it to finish.')
+      return
+    }
+    if (ratingLockRef.current) {
+      setRatingError('A CV review is already starting. Please wait a moment and try again.')
+      return
+    }
     if (pendingReview) {
       await retrySaveReview()
       return
@@ -370,7 +377,14 @@ function Home() {
   }
 
   async function retrySaveReview() {
-    if (!pendingReview || ratingLockRef.current) return
+    if (!pendingReview) {
+      setRatingError('There is no completed review to save. Rate your CV first.')
+      return
+    }
+    if (ratingLockRef.current) {
+      setRatingError('A CV review is already starting. Please wait a moment and try again.')
+      return
+    }
     ratingLockRef.current = true
     setIsRating(true)
     setRatingError('')
