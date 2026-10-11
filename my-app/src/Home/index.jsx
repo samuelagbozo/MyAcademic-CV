@@ -294,7 +294,11 @@ function Home() {
       setRatingError('Choose a PDF or DOCX resume to analyze.')
       return
     }
-    if (!isAuthLoaded || !isSignedIn) {
+    if (!isAuthLoaded) {
+      setRatingError('Your account is still loading. Please try again in a moment.')
+      return
+    }
+    if (!isSignedIn) {
       setRatingError('Sign in to rate your CV.')
       navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
       return
@@ -498,9 +502,6 @@ function Home() {
                 {ratingFile && !pendingReview && <button type="button" onClick={() => { setRatingFile(null); setRatingError('') }} disabled={isRating} className="text-xs font-medium text-[#526158] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] disabled:opacity-50">Remove file</button>}
                 <span className="text-xs text-[#71806F]">Text-based files up to 10 MB</span>
               </div>
-              {ratingError && <p role="alert" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
-              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your CV... The first request can take up to a minute.</p>}
-              {isWakingRatingServer && <p role="status" aria-live="polite" className="mt-2 text-sm text-[#647168]">Waking up the server, this can take a moment on the first try.</p>}
             </div>
 
             <div className="rounded-xl border-2 border-[#1B342B] bg-[#F2EFE6] p-5 shadow-[5px_5px_0_#2C4A3E]">
@@ -516,6 +517,9 @@ function Home() {
                 {isRating && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
                 {isRating ? pendingReview ? 'Saving your review...' : 'Analyzing your CV...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
               </button>
+              {ratingError && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
+              {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your CV... The first request can take up to a minute.</p>}
+              {isWakingRatingServer && <p role="status" aria-live="polite" className="mt-2 text-sm text-[#647168]">Waking up the server, this can take a moment.</p>}
               {ratingError && (
                 <button type="button" disabled={isRating} onClick={pendingReview ? retrySaveReview : rateUploadedResume} className="mt-3 w-full rounded-md text-sm font-medium text-[#42633A] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] disabled:opacity-50">
                   {pendingReview ? 'Try again to save' : 'Try again'}
