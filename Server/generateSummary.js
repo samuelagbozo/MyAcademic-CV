@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import mammoth from 'mammoth'
 import { PDFParse } from 'pdf-parse'
 import WordExtractor from 'word-extractor'
+import { getAuth } from '@clerk/express'
 
 const MAX_INPUT_LENGTH = 8000
 const MAX_RESUME_FILE_BYTES = 10 * 1024 * 1024

@@ -1,12 +1,17 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useAuth } from '@clerk/react-router'
 import { Send } from 'lucide-react'
+import { apiRequest } from '../../lib/api.js'
 
 const inputClass = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 placeholder:text-slate-400'
 
 function SummaryForm({ value, onChange, themeColor }) {
+  const { getToken } = useAuth()
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isWakingServer, setIsWakingServer] = useState(false)
   const [error, setError] = useState('')
+  const abortRef = useRef(null)
 
   async function generateSummary() {
     const mode = prompt.trim() ? 'prompt' : 'polish'
@@ -16,23 +21,46 @@ function SummaryForm({ value, onChange, themeColor }) {
       return
     }
 
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setError('')
     setIsGenerating(true)
+    setIsWakingServer(false)
+
+    const wakeTimer = window.setTimeout(() => setIsWakingServer(true), 5000)
+    const timeout = window.setTimeout(() => controller.abort(), 90_000)
+
     try {
-      const response = await fetch('/api/generate-summary', {
+      const token = await getToken()
+      if (!token) {
+        setError('Your session expired. Please sign in again.')
+        return
+      }
+      const result = await apiRequest('/generate-summary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        token,
+        signal: controller.signal,
         body: JSON.stringify({ text, mode }),
       })
-      const result = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(result?.error || 'Could not generate a summary.')
-      if (typeof result?.summary !== 'string' || !result.summary.trim()) throw new Error('AI did not return a usable summary.')
+      if (typeof result?.summary !== 'string' || !result.summary.trim()) {
+        throw new Error('AI did not return a usable summary.')
+      }
       onChange(result.summary)
       setPrompt('')
     } catch (generationError) {
+      if (generationError.name === 'AbortError') {
+        setError('The request timed out. The server may be waking up — please try again.')
+        return
+      }
       setError(generationError.message || 'Could not generate a summary. Please try again.')
     } finally {
+      window.clearTimeout(wakeTimer)
+      window.clearTimeout(timeout)
+      setIsWakingServer(false)
       setIsGenerating(false)
+      if (abortRef.current === controller) abortRef.current = null
     }
   }
 
@@ -46,9 +74,13 @@ function SummaryForm({ value, onChange, themeColor }) {
       <textarea id="summary-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={3} className={`${inputClass} mt-2 resize-y`} placeholder="For example: Write a concise summary for a recent computer science graduate seeking a junior software developer role." />
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="button" onClick={generateSummary} disabled={isGenerating} className="group inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
-          <Send className="send-icon h-4 w-4" aria-hidden="true" /> {isGenerating ? 'Generating...' : 'Generate with AI'}
+          <Send className="send-icon h-4 w-4" aria-hidden="true" /> {isGenerating ? (isWakingServer ? 'Waking up the server, please wait...' : 'Generating...') : 'Generate with AI'}
         </button>
-        <span role="status" aria-live="polite" className="text-xs text-slate-500">AI uses the prompt when provided; otherwise it polishes your summary.</span>
+        <span role="status" aria-live="polite" className="text-xs text-slate-500">
+          {isWakingServer
+            ? 'The server is waking up from sleep. This may take 30–60 seconds.'
+            : 'AI uses the prompt when provided; otherwise it polishes your summary.'}
+        </span>
       </div>
       {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
       <p className="mt-2 text-xs text-slate-500">Generated text replaces your summary and appears in the preview. Your text is sent to Token Harbor for processing.</p>
