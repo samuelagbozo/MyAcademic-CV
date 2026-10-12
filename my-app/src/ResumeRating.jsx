@@ -8,6 +8,7 @@ import TiltedCard from './components/ui/TiltedCard.jsx'
 import BorderGlow from './components/ui/BorderGlow.jsx'
 import ScrollRevealPanel from './components/ui/ScrollRevealPanel.jsx'
 import { apiRequest } from './lib/api.js'
+import { getPendingRatingFile } from './lib/ratingFileStore.js'
 
 const RATING_CARDS = [
   { key: 'strengths', title: 'Strengths', description: 'What is working well', color: 'text-[#42633A]', background: 'bg-[#EDF2E6]' },
@@ -32,11 +33,14 @@ function RatingDashboard() {
   const savedReviewError = reviewLoad.id === reviewId ? reviewLoad.error : ''
   const isLoadingSavedReview = Boolean(reviewId && !state?.rating && reviewLoad.id !== reviewId)
   const [uploadedRating, setUploadedRating] = useState(null)
-  const [isAnalyzing, setIsAnalyzing] = useState(Boolean(state?.resumeFile))
+  const initialPendingFile = getPendingRatingFile()
+  const initialFile = initialPendingFile || state?.resumeFile || null
+  const [resumeFile, setResumeFile] = useState(initialFile)
+  const [isAnalyzing, setIsAnalyzing] = useState(Boolean(initialFile && !reviewId && !state?.rating))
   const [analysisAttempt, setAnalysisAttempt] = useState(0)
   const [analysisError, setAnalysisError] = useState('')
   const [historySaveError, setHistorySaveError] = useState('')
-  const [resumeFile, setResumeFile] = useState(state?.resumeFile || null)
+  const getTokenRef = useRef(getToken)
   const ratingFileInputRef = useRef(null)
   const rating = savedReview?.rating || state?.rating || uploadedRating
   const [animatedScore, setAnimatedScore] = useState(0)
@@ -94,6 +98,10 @@ function RatingDashboard() {
   }, [getToken, reviewId, state?.fileName, state?.rating])
 
   useEffect(() => {
+    getTokenRef.current = getToken
+  }, [getToken])
+
+  useEffect(() => {
     if (reviewId || state?.rating || !resumeFile) return undefined
 
     let isCurrent = true
@@ -102,7 +110,7 @@ function RatingDashboard() {
       setIsAnalyzing(true)
       setAnalysisError('')
       try {
-        const token = await getToken()
+        const token = await getTokenRef.current?.()
         if (!token) throw new Error('Your session expired. Sign in again to rate your CV.')
         const formData = new FormData()
         formData.append('resume', resumeFile, resumeFile.name)
@@ -118,10 +126,14 @@ function RatingDashboard() {
         const review = { id: crypto.randomUUID(), fileName: resumeFile.name, rating: result.rating }
         if (!isCurrent) return
         setUploadedRating(review.rating)
-        navigate(`/resume-rating/${encodeURIComponent(review.id)}`, {
-          replace: true,
-          state: { rating: review.rating, fileName: review.fileName, resumeFile },
-        })
+        try {
+          navigate(`/resume-rating/${encodeURIComponent(review.id)}`, {
+            replace: true,
+            state: { rating: review.rating, fileName: review.fileName },
+          })
+        } catch {
+          navigate(`/resume-rating/${encodeURIComponent(review.id)}`, { replace: true })
+        }
 
         void apiRequest('/reviews', {
           method: 'POST',
@@ -143,7 +155,7 @@ function RatingDashboard() {
       isCurrent = false
       controller.abort()
     }
-  }, [analysisAttempt, getToken, navigate, resumeFile, reviewId, state?.rating])
+  }, [analysisAttempt, resumeFile, reviewId, state?.rating])
 
   function selectRatingFile(event) {
     const file = event.target.files?.[0] || null

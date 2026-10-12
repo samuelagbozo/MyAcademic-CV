@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/react-router'
 import { Check, Clock3, Download, FileUp, FileText, Pencil, Sparkles, Trash2, Upload } from 'lucide-react'
 import Header from '../components/Header.jsx'
 import SpotlightCard from '../components/ui/SpotlightCard.jsx'
-import TiltCard from '../components/ui/TiltCard.jsx'
+import { setPendingRatingFile } from '../lib/ratingFileStore.js'
 import NewtonsCradle from '../components/ui/NewtonsCradle.jsx'
 import AddResume from './components/addResume.jsx'
 import { apiRequest } from '../lib/api.js'
@@ -277,15 +277,6 @@ function Home() {
 
   async function rateUploadedResume() {
     if (isRating) {
-      setRatingError('A CV review is already in progress. Please wait for it to finish.')
-      return
-    }
-    if (ratingLockRef.current) {
-      setRatingError('A CV review is already starting. Please wait a moment and try again.')
-      return
-    }
-    if (pendingReview) {
-      await retrySaveReview()
       return
     }
 
@@ -302,8 +293,15 @@ function Home() {
       navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
       return
     }
+
     setRatingError('')
-    navigate('/resume-rating', { state: { resumeFile: ratingFile } })
+    setIsRating(true)
+    setPendingRatingFile(ratingFile)
+    try {
+      navigate('/resume-rating', { state: { fileName: ratingFile.name } })
+    } catch {
+      navigate('/resume-rating')
+    }
   }
 
   async function saveReviewAndOpen(review, file, existingToken, signal) {
@@ -426,8 +424,7 @@ function Home() {
           </div>
         </section>
 
-        <TiltCard className="mb-10 min-w-0" maxTilt={3} lift={4}>
-        <section id="rate-resume" className="career-review-history-card scroll-mt-6 min-w-0 rounded-2xl p-4 sm:p-6 md:p-8">
+        <section id="rate-resume" className="career-review-history-card mb-10 scroll-mt-6 min-w-0 rounded-2xl p-4 sm:p-6 md:p-8">
           <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div>
               <span className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-[#83AE40]/50 bg-[#EDF2E6] px-2.5 py-1 text-xs font-medium text-[#42633A]">
@@ -472,7 +469,6 @@ function Home() {
             </div>
           </div>
         </section>
-        </TiltCard>
 
         <section aria-labelledby="resume-history-heading" className="mb-10">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
