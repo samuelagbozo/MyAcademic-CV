@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useAuth } from '@clerk/react-router'
 import { Send } from 'lucide-react'
-import { apiRequest } from '../../lib/api.js'
+import { apiRequest } from '../../../lib/api.js'
 
 const inputClass = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 placeholder:text-slate-400'
 
