@@ -513,11 +513,12 @@ function Home() {
                 <img src="/academic-cv-logo.png" alt="My Academic CV" className="brand-wordmark h-10 w-40 object-contain object-left" />
               </div>
               <p className="mt-1 text-sm text-[#647168]">Score, strengths, and prioritized improvements. Completed reviews are saved to your history.</p>
-              <button type="button" onClick={rateUploadedResume} disabled={isRating} className="career-raised-button mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50">
+              <button type="button" onClick={rateUploadedResume} disabled={isRating || !isAuthLoaded} className="career-raised-button mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50">
                 {isRating && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
-                {isRating ? pendingReview ? 'Saving your review...' : 'Analyzing your CV...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
+                {!isAuthLoaded ? 'Checking account...' : isRating ? pendingReview ? 'Saving your review...' : 'Analyzing your CV...' : pendingReview ? 'Save and open review' : 'Rate my CV'}
               </button>
               {ratingError && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
+              {!isAuthLoaded && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Checking your sign-in status. You can rate your CV as soon as this finishes.</p>}
               {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your CV... The first request can take up to a minute.</p>}
               {isWakingRatingServer && <p role="status" aria-live="polite" className="mt-2 text-sm text-[#647168]">Waking up the server, this can take a moment.</p>}
               {ratingError && (
