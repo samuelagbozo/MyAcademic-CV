@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/react-router'
 import { ArrowLeft, FileUp, Sparkles, Trash2 } from 'lucide-react'
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import Header from './components/Header.jsx'
 import NewtonsCradle from './components/ui/NewtonsCradle.jsx'
 import TiltedCard from './components/ui/TiltedCard.jsx'
@@ -31,8 +31,14 @@ function RatingDashboard() {
   const savedReview = reviewLoad.id === reviewId ? reviewLoad.review : null
   const savedReviewError = reviewLoad.id === reviewId ? reviewLoad.error : ''
   const isLoadingSavedReview = Boolean(reviewId && !state?.rating && reviewLoad.id !== reviewId)
-  const rating = savedReview?.rating || state?.rating
-  const resumeFile = state?.resumeFile
+  const [uploadedRating, setUploadedRating] = useState(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(Boolean(state?.resumeFile))
+  const [analysisAttempt, setAnalysisAttempt] = useState(0)
+  const [analysisError, setAnalysisError] = useState('')
+  const [historySaveError, setHistorySaveError] = useState('')
+  const [resumeFile, setResumeFile] = useState(state?.resumeFile || null)
+  const ratingFileInputRef = useRef(null)
+  const rating = savedReview?.rating || state?.rating || uploadedRating
   const [animatedScore, setAnimatedScore] = useState(0)
   const [categoriesVisible, setCategoriesVisible] = useState(false)
   const [isImproving, setIsImproving] = useState(false)
@@ -41,7 +47,7 @@ function RatingDashboard() {
   const [deleteReviewError, setDeleteReviewError] = useState('')
 
   useEffect(() => {
-    if (!reviewId) return undefined
+    if (!reviewId || state?.rating) return undefined
 
     let isCurrent = true
     async function loadReview() {
@@ -86,6 +92,80 @@ function RatingDashboard() {
       isCurrent = false
     }
   }, [getToken, reviewId, state?.fileName, state?.rating])
+
+  useEffect(() => {
+    if (reviewId || state?.rating || !resumeFile) return undefined
+
+    let isCurrent = true
+    const controller = new AbortController()
+    async function analyzeResume() {
+      setIsAnalyzing(true)
+      setAnalysisError('')
+      try {
+        const token = await getToken()
+        if (!token) throw new Error('Your session expired. Sign in again to rate your CV.')
+        const formData = new FormData()
+        formData.append('resume', resumeFile, resumeFile.name)
+        const result = await apiRequest('/rate-resume', {
+          method: 'POST',
+          token,
+          signal: controller.signal,
+          body: formData,
+        })
+        if (!result?.rating || typeof result.rating !== 'object') {
+          throw new Error('The AI did not return a valid rating. Please try again.')
+        }
+        const review = { id: crypto.randomUUID(), fileName: resumeFile.name, rating: result.rating }
+        if (!isCurrent) return
+        setUploadedRating(review.rating)
+        navigate(`/resume-rating/${encodeURIComponent(review.id)}`, {
+          replace: true,
+          state: { rating: review.rating, fileName: review.fileName, resumeFile },
+        })
+
+        void apiRequest('/reviews', {
+          method: 'POST',
+          token,
+          body: JSON.stringify({ review }),
+        }).catch((error) => {
+          setHistorySaveError(error.message || 'Your review is ready, but could not be saved to history.')
+        })
+      } catch (error) {
+        if (!isCurrent) return
+        setAnalysisError(error.message || 'Could not analyze this resume. Please try again.')
+      } finally {
+        if (isCurrent) setIsAnalyzing(false)
+      }
+    }
+
+    analyzeResume()
+    return () => {
+      isCurrent = false
+      controller.abort()
+    }
+  }, [analysisAttempt, getToken, navigate, resumeFile, reviewId, state?.rating])
+
+  function selectRatingFile(event) {
+    const file = event.target.files?.[0] || null
+    event.target.value = ''
+    if (!file) return
+    const extension = file.name.toLowerCase().match(/\.(pdf|docx)$/)?.[1]
+    const allowedMimeTypes = extension === 'pdf'
+      ? ['', 'application/pdf', 'application/octet-stream']
+      : ['', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream']
+    if (!extension || !allowedMimeTypes.includes(file.type)) {
+      setResumeFile(null)
+      setAnalysisError('This file type is not supported. Choose a PDF or DOCX file.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setResumeFile(null)
+      setAnalysisError('Choose a resume file smaller than 10 MB.')
+      return
+    }
+    setAnalysisError('')
+    setResumeFile(file)
+  }
   const isRatingValid = rating &&
     Number.isInteger(rating.overall_score) &&
     rating.overall_score >= 0 &&
@@ -151,7 +231,39 @@ function RatingDashboard() {
     )
   }
 
-  if (!isRatingValid) return <Navigate to="/home" replace />
+  if (isAnalyzing) {
+    return (
+      <div className="career-theme min-h-screen text-[#1B342B]">
+        <Header action="dashboard" />
+        <main className="mx-auto max-w-3xl px-6 py-16 text-center">
+          <NewtonsCradle label="Analyzing your CV... this can take up to a minute while the server wakes up" />
+          <p role="status" className="mt-6 text-sm text-[#526158]">Analyzing your CV... this can take up to a minute while the server wakes up.</p>
+        </main>
+      </div>
+    )
+  }
+
+  if (!isRatingValid) {
+    return (
+      <div className="career-theme min-h-screen text-[#1B342B]">
+        <Header action="dashboard" />
+        <main className="mx-auto max-w-3xl px-6 py-12">
+          <section className="rounded-2xl border border-[#1B342B]/15 bg-[#FFFEFA] p-6 shadow-sm sm:p-8">
+            <h1 className="text-2xl font-bold">Rate your resume with AI</h1>
+            <p className="mt-2 text-sm leading-relaxed text-[#647168]">Choose a text-based PDF or DOCX file up to 10 MB to start your review.</p>
+            {analysisError && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{analysisError}</p>}
+            {!resumeFile && <p role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">No resume file was received. Choose a file to begin your review.</p>}
+            <input ref={ratingFileInputRef} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={selectRatingFile} className="sr-only" />
+            <button type="button" onClick={() => ratingFileInputRef.current?.click()} className="career-raised-button mt-5 rounded-lg px-5 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40]">
+              <FileUp className="mr-2 inline h-4 w-4" aria-hidden="true" />{resumeFile ? `Selected: ${resumeFile.name}` : 'Choose a PDF or DOCX'}
+            </button>
+            {analysisError && resumeFile && <button type="button" onClick={() => setAnalysisAttempt((attempt) => attempt + 1)} className="ml-3 mt-5 rounded-lg px-4 py-3 text-sm font-semibold text-[#42633A] underline underline-offset-4">Try again</button>}
+            <div><Link to="/home#rate-resume" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[#526158] hover:underline"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to dashboard</Link></div>
+          </section>
+        </main>
+      </div>
+    )
+  }
 
   const scoreAccent = scoreColor(animatedScore)
 
@@ -231,6 +343,11 @@ function RatingDashboard() {
         {savedReviewError && rating && (
           <p role="status" className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Your CV rating is ready, but it could not be saved to AI review history: {savedReviewError}
+          </p>
+        )}
+        {historySaveError && (
+          <p role="alert" className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Your CV rating is ready, but could not be saved to AI review history: {historySaveError}
           </p>
         )}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">

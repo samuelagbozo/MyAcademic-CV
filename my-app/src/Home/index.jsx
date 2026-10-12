@@ -37,7 +37,6 @@ function Home() {
   const [isUploadDragOver, setIsUploadDragOver] = useState(false)
   const [ratingFile, setRatingFile] = useState(null)
   const [isRating, setIsRating] = useState(false)
-  const [isWakingRatingServer, setIsWakingRatingServer] = useState(false)
   const [ratingError, setRatingError] = useState('')
   const [pendingReview, setPendingReview] = useState(null)
   const ratingLockRef = useRef(false)
@@ -303,63 +302,8 @@ function Home() {
       navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
       return
     }
-
-    ratingLockRef.current = true
-    setIsRating(true)
     setRatingError('')
-    setIsWakingRatingServer(false)
-    const controller = new AbortController()
-    const wakeTimer = window.setTimeout(() => setIsWakingRatingServer(true), 5000)
-    const timeout = window.setTimeout(() => controller.abort(), 120000)
-    let generatedReview = null
-    try {
-      const token = await getToken()
-      if (!token) {
-        setRatingError('Your session expired. Sign in again to rate your CV.')
-        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
-        return
-      }
-      const formData = new FormData()
-      formData.append('resume', ratingFile, ratingFile.name)
-      const result = await requestWithRetry('/rate-resume', {
-        method: 'POST', token, signal: controller.signal, body: formData,
-      })
-      if (!result?.rating || typeof result.rating !== 'object') throw new Error('The AI did not return a valid rating. Please retry.')
-      const review = { id: crypto.randomUUID(), fileName: ratingFile.name, rating: result.rating }
-      generatedReview = review
-      navigate(`/resume-rating/${encodeURIComponent(review.id)}`, {
-        state: { rating: review.rating, fileName: review.fileName, resumeFile: ratingFile },
-      })
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('CV review request failed:', error)
-      if (error.status === 401) {
-        navigate('/auth/sign-in', { state: { sessionExpired: true, returnTo: '/home#rate-resume' } })
-      } else if (controller.signal.aborted || error.name === 'AbortError' || error.name === 'TimeoutError') {
-        setRatingError(generatedReview ? 'Your review is ready, but saving it timed out. Try again to save it.' : 'The review took too long. Please try again.')
-      } else if (error.status === 413) {
-        setRatingError('Choose a resume file smaller than 10 MB.')
-      } else if (error.status === 415) {
-        setRatingError('This file type is not supported. Choose a PDF or DOCX file.')
-      } else if (error.status === 422) {
-        setRatingError('This looks like a scanned file. Please upload a text-based PDF or DOCX.')
-      } else if (generatedReview || pendingReview) {
-        setRatingError(`Your review is ready, but it could not be saved: ${error.message || 'Please try again.'}`)
-      } else if (error.cause instanceof TypeError || error instanceof TypeError) {
-        setRatingError('Could not reach the server, try again in a minute.')
-      } else if (error.status === 429) {
-        setRatingError('The AI service is busy. Please wait a moment and try again.')
-      } else if (error.status >= 500) {
-        setRatingError(error.message || 'The AI review service is temporarily unavailable. Please try again.')
-      } else {
-        setRatingError(error.message || 'Could not analyze this resume. Please try again.')
-      }
-    } finally {
-      window.clearTimeout(wakeTimer)
-      window.clearTimeout(timeout)
-      setIsWakingRatingServer(false)
-      setIsRating(false)
-      ratingLockRef.current = false
-    }
+    navigate('/resume-rating', { state: { resumeFile: ratingFile } })
   }
 
   async function saveReviewAndOpen(review, file, existingToken, signal) {
@@ -520,7 +464,6 @@ function Home() {
               {ratingError && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-rose-600">{ratingError}</p>}
               {!isAuthLoaded && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Checking your sign-in status. You can rate your CV as soon as this finishes.</p>}
               {isRating && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#647168]">Analyzing your CV... The first request can take up to a minute.</p>}
-              {isWakingRatingServer && <p role="status" aria-live="polite" className="mt-2 text-sm text-[#647168]">Waking up the server, this can take a moment.</p>}
               {ratingError && (
                 <button type="button" disabled={isRating} onClick={pendingReview ? retrySaveReview : rateUploadedResume} className="mt-3 w-full rounded-md text-sm font-medium text-[#42633A] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83AE40] disabled:opacity-50">
                   {pendingReview ? 'Try again to save' : 'Try again'}
