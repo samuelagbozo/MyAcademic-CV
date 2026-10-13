@@ -3341,3 +3341,110 @@ html.dark {
     color: #6b7280;
     font-size: 12px;
 }
+
+.resume-print-content {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 12mm 15mm;
+    }
+
+    html,
+    body,
+    #root,
+    .career-theme,
+    .career-theme > div,
+    .career-theme .grid,
+    .career-theme .career-preview-panel,
+    .resume-page-preview {
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        transform: none !important;
+        filter: none !important;
+    }
+
+    .career-theme > div > div:first-child,
+    .resume-a4-stage,
+    .resume-a4-print-pages,
+    .resume-a4-measurement {
+        display: none !important;
+    }
+
+    .resume-continuous-preview > :not(.resume-print-content) {
+        display: none !important;
+    }
+
+    .resume-print-content {
+        display: block !important;
+        width: 100% !important;
+        color: #000 !important;
+        font-family: "Times New Roman", Times, serif !important;
+        font-size: 10pt;
+        line-height: 1.35;
+        text-align: left !important;
+        overflow: visible !important;
+    }
+
+    .resume-print-content,
+    .resume-print-content * {
+        color: #000 !important;
+        opacity: 1 !important;
+        filter: none !important;
+        transform: none !important;
+        text-align: left !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .resume-print-content .resume-a4-section,
+    .resume-print-content .resume-a4-entry {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .resume-print-content .resume-a4-section {
+        break-inside: auto;
+        page-break-inside: auto;
+    }
+
+    .resume-print-content .resume-a4-section-heading,
+    .resume-print-content h2 {
+        margin: 0 0 3mm;
+        border-top: 0.25mm solid #000;
+        border-bottom: 0.25mm solid #000;
+        padding: 1mm 0;
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    .resume-print-content section {
+        margin: 0 0 4mm;
+    }
+
+    .resume-print-content .resume-a4-entry {
+        margin-block: 2mm;
+    }
+
+    .resume-print-content a {
+        overflow-wrap: anywhere;
+    }
+
+    .career-theme #resume-preview,
+    .career-theme #resume-preview * {
+        animation: none !important;
+        transition: none !important;
+    }
+}

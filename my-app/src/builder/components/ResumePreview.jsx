@@ -254,6 +254,11 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
         {!hasContent
           ? <p className="flex min-h-[560px] items-center justify-center text-xl text-slate-700 print:min-h-0">Resume Preview</p>
           : sections}
+        <div className="resume-print-content" aria-label="Printable resume">
+          {!hasContent
+            ? <p className="resume-a4-empty">Resume Preview</p>
+            : sections.map((section) => <div className="resume-a4-section" key={`print-${section.key}`}>{section}</div>)}
+        </div>
       </div>
     )
   }
@@ -311,6 +316,11 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
             <span className="resume-a4-page-number" aria-hidden="true">{index + 1}</span>
           </article>
         ))}
+      </div>
+      <div className="resume-print-content" aria-label="Printable resume">
+        {!hasContent
+          ? <p className="resume-a4-empty">Resume Preview</p>
+          : sections.map((section) => <div className="resume-a4-section" key={`print-${section.key}`}>{section}</div>)}
       </div>
     </div>
   )
