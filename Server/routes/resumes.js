@@ -64,9 +64,50 @@ function serializeResume(document) {
   return {
     ...document.data,
     id: document.resumeId,
+    publicEnabled: document.publicEnabled === true,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
   }
+}
+
+function pickFields(value, fields) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return Object.fromEntries(fields
+    .filter((field) => value[field] !== undefined)
+    .map((field) => [field, value[field]]))
+}
+
+function serializePublicResume(data = {}) {
+  const resume = pickFields(data, [
+    'firstName', 'middleName', 'lastName', 'fullName', 'email', 'phone', 'address', 'location',
+    'profession', 'jobTitle', 'linkedin', 'website', 'photo', 'summary',
+  ])
+
+  resume.experience = Array.isArray(data.experience) ? data.experience.map((entry) => pickFields(entry, [
+    'title', 'role', 'companyName', 'company', 'city', 'state', 'startDate', 'endDate', 'workSummery', 'details',
+  ])) : []
+  resume.leadershipExperience = Array.isArray(data.leadershipExperience) ? data.leadershipExperience.map((entry) => pickFields(entry, [
+    'title', 'organization', 'companyName', 'startDate', 'endDate', 'description', 'details',
+  ])) : []
+  resume.education = Array.isArray(data.education) ? data.education.map((entry) => pickFields(entry, [
+    'institution', 'universityName', 'school', 'degree', 'qualification', 'major', 'startDate', 'endDate', 'dates', 'description', 'details',
+  ])) : []
+  resume.projects = Array.isArray(data.projects) ? data.projects.map((entry) => pickFields(entry, ['name', 'link', 'details'])) : []
+  resume.skills = Array.isArray(data.skills) ? data.skills.map((skill) => (
+    typeof skill === 'string' ? skill : pickFields(skill, ['name', 'rating'])
+  )) : []
+  resume.certifications = Array.isArray(data.certifications) ? data.certifications.map((entry) => pickFields(entry, [
+    'name', 'issuer', 'issueDate', 'expiryDate', 'credentialId', 'credentialUrl',
+  ])) : []
+  resume.achievements = Array.isArray(data.achievements) ? data.achievements.map((entry) => pickFields(entry, [
+    'title', 'name', 'organization', 'date', 'description',
+  ])) : []
+  resume.customSections = Array.isArray(data.customSections) ? data.customSections.map((entry) => pickFields(entry, ['title', 'content'])) : []
+  resume.references = Array.isArray(data.references) ? data.references.map((entry) => pickFields(entry, [
+    'name', 'organization', 'email', 'telephone',
+  ])) : []
+
+  return resume
 }
 
 function serializeReview({ _id, userId, reviewId, id: legacyId, ...review }) {
@@ -82,6 +123,25 @@ function reviewOwnershipFilter(userId, reviewId) {
     $or: [{ reviewId }, { id: reviewId }],
   }
 }
+
+router.get('/public/resumes/:resumeId', async (req, res, next) => {
+  try {
+    res.set('Cache-Control', 'no-store')
+    const document = await getDatabase().collection('resumes').findOne(
+      { resumeId: req.params.resumeId, publicEnabled: true },
+      { projection: { _id: 0, data: 1 } },
+    )
+
+    if (!document) {
+      res.status(404).json({ error: 'This CV is not available.' })
+      return
+    }
+
+    res.json({ resume: serializePublicResume(document.data) })
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.use(requireUser)
 
@@ -130,6 +190,7 @@ router.post('/resumes', async (req, res, next) => {
       resumeId: resume.id,
       title: resume.title.trim(),
       data: resume,
+      publicEnabled: false,
       createdAt: now,
       updatedAt: now,
     }
@@ -159,6 +220,30 @@ router.get('/resumes/:resumeId', async (req, res, next) => {
     }
 
     res.json({ resume: serializeResume(document) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.patch('/resumes/:resumeId/public', async (req, res, next) => {
+  try {
+    const { publicEnabled } = req.body || {}
+    if (typeof publicEnabled !== 'boolean') {
+      res.status(400).json({ error: 'publicEnabled must be a boolean.' })
+      return
+    }
+
+    const result = await getDatabase().collection('resumes').updateOne(
+      { userId: req.userId, resumeId: req.params.resumeId },
+      { $set: { publicEnabled, updatedAt: new Date() } },
+    )
+
+    if (!result.matchedCount) {
+      res.status(404).json({ error: 'Resume not found.' })
+      return
+    }
+
+    res.json({ publicEnabled })
   } catch (error) {
     next(error)
   }

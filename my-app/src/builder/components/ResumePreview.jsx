@@ -1,4 +1,4 @@
-import { cloneElement, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { cloneElement, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import PersonalDetailPreview from './preview/PersonalDetailPreview.jsx'
 import SummaryPreview from './preview/SummaryPreview.jsx'
@@ -25,9 +25,17 @@ const PAGINATABLE_SECTION_DATA = {
   references: 'references',
 }
 
-function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
+const A4_PAGE_WIDTH = 794
+const A4_PAGE_HEIGHT = A4_PAGE_WIDTH * (297 / 210)
+
+function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0, showControls = true, showAllPages = false }) {
   const measurementRef = useRef(null)
+  const mobileViewportRef = useRef(null)
+  const [isMobileViewport, setIsMobileViewport] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  ))
   const [pages, setPages] = useState([])
+  const [mobileScale, setMobileScale] = useState(0)
   const [manualPage, setManualPage] = useState(null)
   const hasContent = Boolean(
     resume.firstName ||
@@ -73,7 +81,8 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
   }, [hasContent, resume])
 
   useLayoutEffect(() => {
-    if (previewMode !== 'page' || !measurementRef.current) return undefined
+    const mobileLayout = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+    if ((previewMode !== 'page' && !mobileLayout) || !measurementRef.current) return undefined
 
     const measureAndPaginate = () => {
       const container = measurementRef.current
@@ -195,7 +204,49 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
       observer.disconnect()
       fonts?.removeEventListener?.('loadingdone', scheduleMeasure)
     }
-  }, [previewMode, sections])
+  }, [isMobileViewport, previewMode, sections])
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia('(max-width: 767px)')
+    const updateViewport = () => setIsMobileViewport(mobileQuery.matches)
+    updateViewport()
+    mobileQuery.addEventListener('change', updateViewport)
+    return () => mobileQuery.removeEventListener('change', updateViewport)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const mobileQuery = window.matchMedia('(max-width: 767px)')
+    const viewport = mobileViewportRef.current
+    if (!viewport) return undefined
+
+    const updateScale = (width = viewport.clientWidth) => {
+      if (!mobileQuery.matches || width <= 0) {
+        setMobileScale(0)
+        return
+      }
+      const nextScale = Math.min(1, width / A4_PAGE_WIDTH)
+      setMobileScale((current) => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      updateScale(entries[0]?.contentRect.width || 0)
+    })
+    observer.observe(viewport)
+    const handleBreakpointChange = () => updateScale()
+    mobileQuery.addEventListener('change', handleBreakpointChange)
+    window.addEventListener('resize', handleBreakpointChange)
+    const styles = window.getComputedStyle(viewport)
+    const horizontalPadding = Number.parseFloat(styles.paddingLeft) + Number.parseFloat(styles.paddingRight)
+    updateScale(viewport.clientWidth - horizontalPadding)
+
+    return () => {
+      observer.disconnect()
+      mobileQuery.removeEventListener('change', handleBreakpointChange)
+      window.removeEventListener('resize', handleBreakpointChange)
+    }
+  }, [isMobileViewport, previewMode])
 
   const activeStepKey = FORM_STEP_SECTION_KEYS[activeFormStep]
   let automaticPageIndex = pages.findIndex((page) => page.some((section) => section.key === activeStepKey))
@@ -237,6 +288,9 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
   }
 
   const sectionByKey = new Map(sections.map((section) => [section.key, section]))
+  const allPageDescriptors = pages.length
+    ? pages
+    : [sections.map((section) => ({ key: section.key, pageStart: 0, pageEnd: undefined, showHeading: true }))]
   const renderPageSections = (page) => page.map((descriptor) => {
     const section = sectionByKey.get(descriptor.key)
     if (!section) return null
@@ -248,7 +302,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
     return <div className={`resume-a4-section${descriptor.showHeading === false ? ' resume-a4-section--continuation' : ''}`} key={`${descriptor.key}-${descriptor.pageStart}`}>{currentSection}</div>
   })
 
-  if (previewMode === 'continuous') {
+  if (previewMode === 'continuous' && !isMobileViewport) {
     return (
       <div id="resume-preview" className="resume-document resume-continuous-preview min-h-[480px] min-w-0 max-w-full break-words bg-white px-4 py-6 shadow-lg sm:min-h-[700px] sm:px-12 sm:py-10 lg:px-14 print:min-h-0 print:p-14 print:shadow-none" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
         {!hasContent
@@ -269,7 +323,18 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
         {sections.map((section) => <div className="resume-a4-section" key={section.key}>{section}</div>)}
       </div>
       <div className="resume-a4-stage">
-        {pages.length > 1 && (
+        {showAllPages ? (
+          <div className="resume-a4-stack">
+            <div className="resume-a4-public-pages">
+              {allPageDescriptors.map((page, index) => (
+                <article className="resume-a4-page resume-document" key={`public-page-${index + 1}`} aria-label={`Resume page ${index + 1}`}>
+                  {!hasContent ? <p className="resume-a4-empty">Resume Preview</p> : renderPageSections(page)}
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : <>
+        {showControls && pages.length > 1 && (
           <div className="resume-a4-controls print:hidden">
             <button
               type="button"
@@ -306,6 +371,20 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
             <span className="resume-a4-page-number" aria-hidden="true">{pageIndex + 1}</span>
           </article>
         </div>
+        </>}
+      </div>
+      <div className="resume-mobile-preview" ref={mobileViewportRef} aria-label="Resume pages">
+        {allPageDescriptors.map((page, index) => (
+          <div className="resume-mobile-page-frame" key={`mobile-frame-${index + 1}`} style={{ height: `${A4_PAGE_HEIGHT * mobileScale}px` }}>
+            <article
+              className="resume-a4-page resume-document resume-mobile-page"
+              aria-label={`Resume page ${index + 1} of ${allPageDescriptors.length}`}
+              style={{ '--resume-mobile-scale': mobileScale, width: `${A4_PAGE_WIDTH}px`, height: `${A4_PAGE_HEIGHT}px` }}
+            >
+              {!hasContent ? <p className="resume-a4-empty">Resume Preview</p> : renderPageSections(page)}
+            </article>
+          </div>
+        ))}
       </div>
       <div className="resume-a4-print-pages">
         {(pages.length ? pages : [sections]).map((page, index) => (

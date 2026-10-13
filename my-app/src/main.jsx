@@ -12,6 +12,7 @@ import {
   Dashboard,
   Home,
   LoginPage,
+  PublicCv,
   ResumeHistory,
   ResumeRating,
   SignUpPage,
@@ -48,6 +49,10 @@ const router = createBrowserRouter([
           {
             path: '/builder/:id',
             element: <Suspense fallback={<RouteLoading label="Loading your resume builder" />}><Builder /></Suspense>,
+          },
+          {
+            path: '/cv/:id',
+            element: <Suspense fallback={<RouteLoading label="Loading CV" />}><PublicCv /></Suspense>,
           },
           {
             path: '/resume-rating',

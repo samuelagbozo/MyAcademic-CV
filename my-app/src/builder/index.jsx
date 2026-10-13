@@ -15,6 +15,7 @@ function createEmptyResume(id, title) {
     title: title || 'My Resume',
     firstName: '', middleName: '', lastName: '', fullName: '', email: '', phone: '', address: '', location: '', profession: '', jobTitle: '', linkedin: '', website: '',
     summary: '', photo: '', experience: [], leadershipExperience: [], education: [], projects: [], skills: [], certifications: [], achievements: [], customSections: [], references: [],
+    publicEnabled: false,
     themeColor: '#111827',
   }
 }
@@ -105,6 +106,7 @@ function Builder() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
+  const [isUpdatingPublicLink, setIsUpdatingPublicLink] = useState(false)
   const [previewMode, setPreviewMode] = useState(readPreviewMode)
   const [activeFormStep, setActiveFormStep] = useState(0)
   const resumeRef = useRef(resume)
@@ -214,24 +216,51 @@ function Builder() {
   }, [isDirty, isLoading, resume, saveResume])
 
   async function shareResume() {
-    const resumeText = document.getElementById('resume-preview')?.innerText
-    if (!resumeText) {
-      setSavedMessage('Add resume details before sharing.')
+    if (!resume.publicEnabled) {
+      setSavedMessage('Turn on the public link before sharing.')
       return
     }
 
+    const fullName = [resume.firstName, resume.middleName, resume.lastName].filter(Boolean).join(' ').trim()
+      || (resume.fullName || '').trim()
+      || 'My Resume'
+    const shareUrl = `${window.location.origin}/cv/${encodeURIComponent(id)}`
+
     try {
       if (navigator.share) {
-        await navigator.share({ title: resume.title || 'My Resume', text: resumeText })
-        setSavedMessage('Resume shared.')
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(resumeText)
-        setSavedMessage('Resume copied to clipboard.')
-      } else {
-        setSavedMessage('Sharing is not available in this browser.')
+        await navigator.share({ title: `${fullName} - CV`, url: shareUrl })
+        setSavedMessage('Link shared.')
+        return
       }
     } catch (error) {
-      if (error.name !== 'AbortError') setSavedMessage('Could not share this resume.')
+      if (error.name === 'AbortError') return
+    }
+
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard is unavailable.')
+      await navigator.clipboard.writeText(shareUrl)
+      setSavedMessage('Link copied')
+    } catch {
+      setSavedMessage('Could not copy the public link.')
+    }
+  }
+
+  async function setPublicLinkEnabled(publicEnabled) {
+    setIsUpdatingPublicLink(true)
+    setSavedMessage('Updating public link...')
+    try {
+      const token = await getToken()
+      const result = await apiRequest(`/resumes/${encodeURIComponent(id)}/public`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ publicEnabled }),
+      })
+      setResume((current) => ({ ...current, publicEnabled: result.publicEnabled }))
+      setSavedMessage(result.publicEnabled ? 'Public link enabled' : 'Public link disabled')
+    } catch (error) {
+      setSavedMessage(error.message || 'Could not update the public link.')
+    } finally {
+      setIsUpdatingPublicLink(false)
     }
   }
 
@@ -255,6 +284,15 @@ function Builder() {
         </button>
         <div className="flex flex-wrap items-center gap-3">
           <span role="status" className="text-sm text-slate-500">{savedMessage || (isSaving ? 'Saving...' : '')}</span>
+          <label className="mobile-public-link-toggle" title="Allow anyone with this link to view the CV">
+            <input
+              type="checkbox"
+              checked={resume.publicEnabled === true}
+              disabled={isUpdatingPublicLink}
+              onChange={(event) => void setPublicLinkEnabled(event.target.checked)}
+            />
+            <span>Public link</span>
+          </label>
           <button type="button" onClick={shareResume} className="career-form-secondary inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Share2 className="h-4 w-4" /> Share
           </button>

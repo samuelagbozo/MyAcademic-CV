@@ -21,6 +21,10 @@ const allowedOrigins = (process.env.CLIENT_URL || '')
   .map((origin) => origin.trim().replace(/\/+$/, ''))
   .filter(Boolean)
 
+if (!allowedOrigins.includes('https://my-academic-cv.vercel.app')) {
+  allowedOrigins.push('https://my-academic-cv.vercel.app')
+}
+
 if (process.env.NODE_ENV !== 'production') {
   allowedOrigins.push(
     'http://localhost:5173',

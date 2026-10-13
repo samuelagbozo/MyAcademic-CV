@@ -3505,3 +3505,82 @@ html.dark {
         transition: none !important;
     }
 }
+
+.resume-a4-public-pages {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.resume-mobile-preview {
+    display: none;
+}
+
+.mobile-public-link-toggle {
+    display: none;
+}
+
+@media screen and (max-width: 767px) {
+    .resume-a4-stage {
+        display: none !important;
+    }
+
+    .resume-a4-measurement {
+        left: 0;
+        width: 794px;
+        max-width: none;
+        transform: none;
+    }
+
+    .resume-mobile-preview {
+        display: block;
+        box-sizing: border-box;
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        padding: 0 12px;
+    }
+
+    .resume-mobile-page-frame {
+        position: relative;
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+
+    .resume-mobile-page-frame:last-child {
+        margin-bottom: 0;
+    }
+
+    .resume-mobile-page {
+        position: absolute;
+        top: 0;
+        left: 0;
+        flex: none;
+        max-width: none;
+        min-height: 0;
+        aspect-ratio: auto;
+        padding: 8%;
+        transform: scale(var(--resume-mobile-scale)) !important;
+        transform-origin: top left;
+        animation: none !important;
+    }
+
+    /* Keep Tailwind's viewport-based sm:text-* utilities at desktop preview sizes inside the fixed A4 sheet. */
+    .resume-mobile-page .resume-header-name {
+        font-size: 1.875rem;
+    }
+
+    .resume-mobile-page .resume-header-contact,
+    .resume-mobile-page .resume-a4-section > section {
+        font-size: 0.875rem;
+    }
+
+    .mobile-public-link-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #000000;
+        font-size: 14px;
+    }
+}

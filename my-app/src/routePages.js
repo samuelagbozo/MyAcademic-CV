@@ -9,6 +9,7 @@ const Builder = lazy(() => import('./builder'))
 const ResumeRating = lazy(() => import('./ResumeRating.jsx'))
 const ResumeHistory = lazy(() => import('./ResumeHistory.jsx'))
 const AIReviewHistory = lazy(() => import('./AIReviewHistory.jsx'))
+const PublicCv = lazy(() => import('./PublicCv.jsx'))
 
 export {
   AIReviewHistory,
@@ -16,6 +17,7 @@ export {
   Dashboard,
   Home,
   LoginPage,
+  PublicCv,
   ResumeHistory,
   ResumeRating,
   SignUpPage,
