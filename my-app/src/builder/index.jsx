@@ -284,7 +284,7 @@ function Builder() {
         </button>
         <div className="flex flex-wrap items-center gap-3">
           <span role="status" className="text-sm text-slate-500">{savedMessage || (isSaving ? 'Saving...' : '')}</span>
-          <label className="mobile-public-link-toggle" title="Allow anyone with this link to view the CV">
+          <label className="public-link-toggle" title="Allow anyone with this link to view the CV">
             <input
               type="checkbox"
               checked={resume.publicEnabled === true}

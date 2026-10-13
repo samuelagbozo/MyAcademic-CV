@@ -3516,8 +3516,12 @@ html.dark {
     display: none;
 }
 
-.mobile-public-link-toggle {
-    display: none;
+.public-link-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #000000;
+    font-size: 14px;
 }
 
 @media screen and (max-width: 767px) {
@@ -3574,13 +3578,5 @@ html.dark {
     .resume-mobile-page .resume-header-contact,
     .resume-mobile-page .resume-a4-section > section {
         font-size: 0.875rem;
-    }
-
-    .mobile-public-link-toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: #000000;
-        font-size: 14px;
     }
 }
