@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { formatResumeDateRange } from '../../previewFormatting.js'
 function AchievementsPreview({ achievements, pageStart = 0, pageEnd = achievements.length, showHeading = true }) {
   const visibleAchievements = achievements.slice(pageStart, pageEnd)
 
@@ -8,9 +9,9 @@ function AchievementsPreview({ achievements, pageStart = 0, pageEnd = achievemen
       <div className="space-y-3">
         {visibleAchievements.map((item, index) => (
           <div className="resume-a4-entry" key={pageStart + index}>
-            <p className="flex flex-wrap justify-between gap-x-3">
-              <span className="min-w-0 font-semibold">{item.title || item.name}</span>
-              <span className="min-w-0">{[item.organization, item.date].filter(Boolean).join(' | ')}</span>
+            <p className="flex items-start justify-between gap-x-3">
+              <span className="min-w-0 flex-1 font-semibold">{item.title || item.name}</span>
+              <span className="shrink-0 whitespace-nowrap text-right">{[item.organization, formatResumeDateRange(item.date, '')].filter(Boolean).join(' | ')}</span>
             </p>
             {item.description && <p className="mt-1 whitespace-pre-wrap">{item.description}</p>}
           </div>

@@ -3349,7 +3349,7 @@ html.dark {
 @media print {
     @page {
         size: A4;
-        margin: 12mm 15mm;
+        margin: 0;
     }
 
     html,
@@ -3359,7 +3359,8 @@ html.dark {
     .career-theme > div,
     .career-theme .grid,
     .career-theme .career-preview-panel,
-    .resume-page-preview {
+    .resume-page-preview,
+    .resume-continuous-preview {
         width: auto !important;
         max-width: none !important;
         min-width: 0 !important;
@@ -3387,7 +3388,11 @@ html.dark {
 
     .resume-print-content {
         display: block !important;
+        box-sizing: border-box;
         width: 100% !important;
+        padding: 12mm 15mm !important;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
         color: #000 !important;
         font-family: "Times New Roman", Times, serif !important;
         font-size: 10pt;
@@ -3436,6 +3441,14 @@ html.dark {
 
     .resume-print-content .resume-a4-entry {
         margin-block: 2mm;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .resume-print-content .resume-a4-section-heading,
+    .resume-print-content h2 {
+        break-after: avoid;
+        page-break-after: avoid;
     }
 
     .resume-print-content a {

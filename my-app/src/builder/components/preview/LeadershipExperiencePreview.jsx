@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { formatResumeDateRange } from '../../previewFormatting.js'
 function LeadershipExperiencePreview({ experiences, pageStart = 0, pageEnd = experiences.length, showHeading = true }) {
   const visibleExperiences = experiences.slice(pageStart, pageEnd)
 
@@ -8,9 +9,9 @@ function LeadershipExperiencePreview({ experiences, pageStart = 0, pageEnd = exp
       {visibleExperiences.map((item, index) => (
         <div key={pageStart + index} className="resume-a4-entry my-3">
           <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
-          <p className="flex flex-wrap justify-between gap-x-3">
-            <span className="min-w-0">{item.organization}</span>
-            <span className="min-w-0">{item.startDate}{item.startDate && (item.endDate || 'Present') ? ' To ' : ''}{item.endDate || (item.startDate ? 'Present' : '')}</span>
+          <p className="flex items-start justify-between gap-x-3">
+            <span className="min-w-0 flex-1">{item.organization}</span>
+            <span className="shrink-0 whitespace-nowrap text-right">{formatResumeDateRange(item.startDate, item.endDate || (item.startDate ? 'Present' : ''))}</span>
           </p>
           {item.description && <p className="my-2 whitespace-pre-wrap">{item.description}</p>}
         </div>

@@ -19,6 +19,13 @@ function createEmptyResume(id, title) {
   }
 }
 
+function correctKnownCompanyTypo(value) {
+  if (typeof value !== 'string') return value || ''
+  return value
+    .replace(/^Ghana Ports and Authority(?=\s*(?:\(GPHA\))?$)/i, 'Ghana Ports and Harbours Authority')
+    .replace(/(?<=\w)\(/g, ' (')
+}
+
 function normalizeResume(saved, id, title) {
   if (!saved) return createEmptyResume(id, title)
 
@@ -35,7 +42,7 @@ function normalizeResume(saved, id, title) {
         ? saved.experience.map((entry) => ({
           ...entry,
           title: entry.title || entry.role || '',
-          companyName: entry.companyName || entry.company || '',
+          companyName: correctKnownCompanyTypo(entry.companyName || entry.company || ''),
           city: entry.city || '',
           state: entry.state || '',
           startDate: entry.startDate || '',
@@ -107,6 +114,16 @@ function Builder() {
   const saveCountRef = useRef(0)
   resumeRef.current = resume
 
+  const printResume = useCallback(() => {
+    const originalTitle = document.title
+    const fullName = [resume.firstName, resume.middleName, resume.lastName].filter(Boolean).join(' ').trim() || (resume.fullName || '').trim()
+    document.title = `${fullName || 'Resume'} - CV`
+    window.addEventListener('afterprint', () => {
+      document.title = originalTitle
+    }, { once: true })
+    window.print()
+  }, [resume.firstName, resume.middleName, resume.lastName, resume.fullName])
+
   useEffect(() => {
     let isCurrent = true
 
@@ -115,7 +132,16 @@ function Builder() {
       try {
         const token = await getToken()
         const result = await apiRequest(`/resumes/${encodeURIComponent(id)}`, { token })
-        if (isCurrent) setResume(normalizeResume(result.resume, id, state?.title))
+        if (isCurrent) {
+          const hadKnownCompanyTypo = Array.isArray(result.resume?.experience)
+            && result.resume.experience.some((entry) => /^Ghana Ports and Authority\s*(?:\(GPHA\))?$/i.test(entry.companyName || entry.company || ''))
+          setResume(normalizeResume(result.resume, id, state?.title))
+          if (hadKnownCompanyTypo) {
+            revisionRef.current += 1
+            dirtyRef.current = true
+            setIsDirty(true)
+          }
+        }
       } catch (error) {
         if (isCurrent) setSavedMessage(error.message || 'Could not load this resume.')
       } finally {
@@ -135,9 +161,9 @@ function Builder() {
 
   useEffect(() => {
     if (isLoading || !state?.printOnLoad) return undefined
-    const timer = window.setTimeout(() => window.print(), 250)
+    const timer = window.setTimeout(() => printResume(), 250)
     return () => window.clearTimeout(timer)
-  }, [isLoading, state?.printOnLoad])
+  }, [isLoading, printResume, state?.printOnLoad])
 
   function updateResume(updater) {
     revisionRef.current += 1
@@ -210,12 +236,7 @@ function Builder() {
   }
 
   function downloadResume() {
-    const originalTitle = document.title
-    document.title = ' '
-    window.addEventListener('afterprint', () => {
-      document.title = originalTitle
-    }, { once: true })
-    window.print()
+    printResume()
   }
 
   if (isLoading) {

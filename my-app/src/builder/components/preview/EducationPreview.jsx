@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { formatResumeDateRange } from '../../previewFormatting.js'
 function EducationPreview({ education, pageStart = 0, pageEnd = education.length, showHeading = true }) {
   const visibleEducation = education.slice(pageStart, pageEnd)
 
@@ -8,7 +9,7 @@ function EducationPreview({ education, pageStart = 0, pageEnd = education.length
       {visibleEducation.map((item, index) => (
         <div key={pageStart + index} className="resume-a4-entry my-3">
           <h3 className="text-sm font-bold text-slate-900">{item.institution || item.universityName || item.school}</h3>
-          <p className="flex flex-wrap items-baseline justify-between gap-x-3"><span className="min-w-0 flex-1">{[item.degree || item.qualification, item.major].filter(Boolean).join(' in ')}</span><span className="shrink-0">{item.startDate}{item.startDate && (item.endDate || item.dates) ? ' - ' : ''}{item.endDate || item.dates}</span></p>
+          <p className="flex items-start justify-between gap-x-3"><span className="min-w-0 flex-1">{[item.degree || item.qualification, item.major].filter(Boolean).join(' in ')}</span><span className="shrink-0 whitespace-nowrap text-right">{formatResumeDateRange(item.startDate, item.endDate || item.dates)}</span></p>
           {(item.description || item.details) && <p className="my-2 whitespace-pre-wrap">{item.description || item.details}</p>}
         </div>
       ))}
