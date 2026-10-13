@@ -3346,6 +3346,10 @@ html.dark {
     display: none;
 }
 
+.career-theme .resume-a4-section-heading {
+    color: #000 !important;
+}
+
 @media print {
     @page {
         size: A4;
@@ -3449,6 +3453,12 @@ html.dark {
     .resume-print-content h2:not(.resume-header-name) {
         break-after: avoid;
         page-break-after: avoid;
+    }
+
+    .resume-print-content .resume-a4-section-heading {
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     .resume-print-content .resume-personal-header,
