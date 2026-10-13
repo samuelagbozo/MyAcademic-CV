@@ -3346,8 +3346,21 @@ html.dark {
     display: none;
 }
 
+.resume-document {
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.resume-document * {
+    color: #000000 !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
 .career-theme .resume-a4-section-heading {
-    color: #000 !important;
+    color: #000000 !important;
 }
 
 @media print {
@@ -3456,7 +3469,7 @@ html.dark {
     }
 
     .resume-print-content .resume-a4-section-heading {
-        color: #000 !important;
+        color: #000000 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }

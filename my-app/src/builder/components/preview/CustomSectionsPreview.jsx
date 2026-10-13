@@ -13,7 +13,7 @@ function CustomSectionsPreview({ sections = [], pageStart = 0, pageEnd = section
       {visibleSections.map((section) => (
         <section key={section.id} className="resume-a4-entry my-5 text-xs leading-relaxed sm:text-sm">
           {section.title.trim() && (
-            <h2 className="mb-2 border-y-2 border-black py-1 text-left text-sm font-normal uppercase text-slate-900">
+            <h2 className="resume-a4-section-heading mb-2 border-y-2 border-black py-1 text-left text-sm font-normal uppercase">
               {section.title}
             </h2>
           )}

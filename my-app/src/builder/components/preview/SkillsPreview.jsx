@@ -6,7 +6,7 @@ function SkillsPreview({ skills, pageStart = 0, pageEnd = skills.length, showHea
 
   return (
     <section className="my-5 text-xs leading-relaxed sm:text-sm">
-      {showHeading && <h2 className="resume-a4-section-heading mb-2 border-y-2 border-black py-1 text-left text-sm font-normal uppercase text-slate-900">Skills</h2>}
+      {showHeading && <h2 className="resume-a4-section-heading mb-2 border-y-2 border-black py-1 text-left text-sm font-normal uppercase">Skills</h2>}
       <ul className="my-3 list-disc space-y-1 pl-6">
         {visibleSkills.map((skill, index) => {
           const rating = typeof skill === 'string' ? 0 : Number(skill.rating) || 0

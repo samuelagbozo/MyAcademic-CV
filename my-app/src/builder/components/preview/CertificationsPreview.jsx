@@ -5,7 +5,7 @@ function CertificationsPreview({ certifications, pageStart = 0, pageEnd = certif
 
   return (
     <section className="my-5 text-xs leading-relaxed sm:text-sm">
-      {showHeading && <h2 className="resume-a4-section-heading mb-2 border-y-2 border-black py-1 text-left text-sm font-normal uppercase text-slate-900">Certifications</h2>}
+      {showHeading && <h2 className="resume-a4-section-heading mb-2 border-y-2 border-black py-1 text-left text-sm font-normal uppercase">Certifications</h2>}
       <div className="space-y-3">
         {visibleCertifications.map((item, index) => (
           <div className="resume-a4-entry" key={pageStart + index}>

@@ -250,11 +250,11 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
 
   if (previewMode === 'continuous') {
     return (
-      <div id="resume-preview" className="resume-continuous-preview min-h-[480px] min-w-0 max-w-full break-words bg-white px-4 py-6 text-slate-900 shadow-lg sm:min-h-[700px] sm:px-12 sm:py-10 lg:px-14 print:min-h-0 print:p-14 print:shadow-none" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
+      <div id="resume-preview" className="resume-document resume-continuous-preview min-h-[480px] min-w-0 max-w-full break-words bg-white px-4 py-6 shadow-lg sm:min-h-[700px] sm:px-12 sm:py-10 lg:px-14 print:min-h-0 print:p-14 print:shadow-none" style={{ fontFamily: '"Times New Roman", Times, serif', overflowWrap: 'anywhere' }}>
         {!hasContent
-          ? <p className="flex min-h-[560px] items-center justify-center text-xl text-slate-700 print:min-h-0">Resume Preview</p>
+          ? <p className="flex min-h-[560px] items-center justify-center text-xl print:min-h-0">Resume Preview</p>
           : sections}
-        <div className="resume-print-content" aria-label="Printable resume">
+        <div className="resume-print-content resume-document" aria-label="Printable resume">
           {!hasContent
             ? <p className="resume-a4-empty">Resume Preview</p>
             : sections.map((section) => <div className="resume-a4-section" key={`print-${section.key}`}>{section}</div>)}
@@ -296,7 +296,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
           {pages.length > 1 && <span className="resume-a4-stack-sheet resume-a4-stack-sheet--back" aria-hidden="true" />}
           {pages.length > 1 && <span className="resume-a4-stack-sheet resume-a4-stack-sheet--front" aria-hidden="true" />}
           <article
-            className="resume-a4-page"
+            className="resume-a4-page resume-document"
             key={`screen-page-${pageIndex}`}
             aria-label={`Resume page ${pageIndex + 1} of ${pages.length || 1}`}
           >
@@ -317,7 +317,7 @@ function ResumePreview({ resume, previewMode = 'page', activeFormStep = 0 }) {
           </article>
         ))}
       </div>
-      <div className="resume-print-content" aria-label="Printable resume">
+      <div className="resume-print-content resume-document" aria-label="Printable resume">
         {!hasContent
           ? <p className="resume-a4-empty">Resume Preview</p>
           : sections.map((section) => <div className="resume-a4-section" key={`print-${section.key}`}>{section}</div>)}
