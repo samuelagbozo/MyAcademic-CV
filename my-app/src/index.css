@@ -3426,7 +3426,7 @@ html.dark {
     }
 
     .resume-print-content .resume-a4-section-heading,
-    .resume-print-content h2 {
+    .resume-print-content h2:not(.resume-header-name) {
         margin: 0 0 3mm;
         border-top: 0.25mm solid #000;
         border-bottom: 0.25mm solid #000;
@@ -3446,9 +3446,30 @@ html.dark {
     }
 
     .resume-print-content .resume-a4-section-heading,
-    .resume-print-content h2 {
+    .resume-print-content h2:not(.resume-header-name) {
         break-after: avoid;
         page-break-after: avoid;
+    }
+
+    .resume-print-content .resume-personal-header,
+    .resume-print-content .resume-header-name,
+    .resume-print-content .resume-header-title,
+    .resume-print-content .resume-header-contact,
+    .resume-print-content .resume-header-contact * {
+        text-align: center !important;
+    }
+
+    .resume-print-content .resume-header-name {
+        display: block;
+        width: 100%;
+        margin: 0;
+        border: 0;
+        padding: 0;
+    }
+
+    .resume-print-content .resume-a4-section + .resume-a4-section {
+        margin-top: 4mm;
+        padding-top: 4mm;
     }
 
     .resume-print-content a {
